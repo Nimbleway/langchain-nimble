@@ -10,36 +10,18 @@ pip install -U langchain-nimble
 
 And you should configure credentials by setting the following environment variables:
 
-* TODO: fill this out
-
-## Chat Models
-
-`ChatNimble` class exposes chat models from Nimble.
-
-```python
-from langchain_nimble import ChatNimble
-
-llm = ChatNimble()
-llm.invoke("Sing a ballad of LangChain.")
+```bash
+export NIMBLE_API_KEY=<PLACEHOLDER_FOR_YOUR_NIMBLE_API_KEY>
 ```
+You can get your API key from [Nimble's website](https://nimbleway.com/)
+Just, go to the log-in page and sign up for a new account. After that, you can get your API key from the dashboard.
 
-## Embeddings
-
-`NimbleEmbeddings` class exposes embeddings from Nimble.
-
-```python
-from langchain_nimble import NimbleEmbeddings
-
-embeddings = NimbleEmbeddings()
-embeddings.embed_query("What is the meaning of life?")
-```
-
-## LLMs
-`NimbleLLM` class exposes LLMs from Nimble.
+## Retrievers
+`NimbleRetriever` class exposes LLMs from Nimble.
 
 ```python
-from langchain_nimble import NimbleLLM
+from langchain_nimble import NimbleRetriever
 
-llm = NimbleLLM()
-llm.invoke("The meaning of life is")
+retriever = NimbleRetriever()
+retriever.invoke("Nimbleway")
 ```
