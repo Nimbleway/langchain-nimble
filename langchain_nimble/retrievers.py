@@ -40,7 +40,7 @@ class NimbleRetriever(BaseRetriever):
         search_engine: The search engine to use. Default is Google.
     """
 
-    api_key: str
+    api_key: str = None
     k: int = 3
     search_engine: SearchEngine = SearchEngine.GOOGLE
     parse: bool = False
