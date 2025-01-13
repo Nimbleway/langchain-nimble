@@ -1,9 +1,10 @@
 from typing import Type
 
-from langchain_nimble.retrievers import NimbleRetriever
 from langchain_tests.integration_tests import (
     RetrieversIntegrationTests,
 )
+
+from langchain_nimble.retrievers import NimbleRetriever
 
 
 class TestNimbleRetriever(RetrieversIntegrationTests):
@@ -14,7 +15,7 @@ class TestNimbleRetriever(RetrieversIntegrationTests):
 
     @property
     def retriever_constructor_params(self) -> dict:
-        return {"k": 2}
+        return {"k": 2, "api_key": ""}
 
     @property
     def retriever_query_example(self) -> str:

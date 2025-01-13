@@ -1,107 +1,89 @@
-"""Nimble retrievers."""
-
+import os
+from enum import Enum
 from typing import Any, List
 
-from langchain_core.callbacks import CallbackManagerForRetrieverRun
-from langchain_core.documents import Document
+import requests
+from langchain_core.callbacks.manager import CallbackManagerForRetrieverRun
+from langchain_core.documents.base import Document
 from langchain_core.retrievers import BaseRetriever
 
 
-class NimbleRetriever(BaseRetriever):
-    # TODO: Replace all TODOs in docstring. See example docstring:
-    # https://github.com/langchain-ai/langchain/blob/master/libs/community/langchain_community/retrievers/tavily_search_api.py#L17
-    """Nimble retriever.
-
-    # TODO: Replace with relevant packages, env vars, etc.
-    Setup:
-        Install ``langchain-nimble`` and set environment variable
-        ``NIMBLE_API_KEY``.
-
-        .. code-block:: bash
-
-            pip install -U langchain-nimble
-            export NIMBLE_API_KEY="your-api-key"
-
-    # TODO: Populate with relevant params.
-    Key init args:
-        arg 1: type
-            description
-        arg 2: type
-            description
-
-    # TODO: Replace with relevant init params.
-    Instantiate:
-        .. code-block:: python
-
-            from langchain-nimble import NimbleRetriever
-
-            retriever = NimbleRetriever(
-                # ...
-            )
-
-    Usage:
-        .. code-block:: python
-
-            query = "..."
-
-            retriever.invoke(query)
-
-        .. code-block:: none
-
-            # TODO: Example output.
-
-    Use within a chain:
-        .. code-block:: python
-
-            from langchain_core.output_parsers import StrOutputParser
-            from langchain_core.prompts import ChatPromptTemplate
-            from langchain_core.runnables import RunnablePassthrough
-            from langchain_openai import ChatOpenAI
-
-            prompt = ChatPromptTemplate.from_template(
-                \"\"\"Answer the question based only on the context provided.
-
-            Context: {context}
-
-            Question: {question}\"\"\"
-            )
-
-            llm = ChatOpenAI(model="gpt-3.5-turbo-0125")
-
-            def format_docs(docs):
-                return "\\n\\n".join(doc.page_content for doc in docs)
-
-            chain = (
-                {"context": retriever | format_docs, "question": RunnablePassthrough()}
-                | prompt
-                | llm
-                | StrOutputParser()
-            )
-
-            chain.invoke("...")
-
-        .. code-block:: none
-
-             # TODO: Example output.
-
+class SearchEngine(str, Enum):
+    """
+    Enum representing the search engines supported by Nimble
     """
 
-    k: int = 3
+    GOOGLE = "google_search"
+    GOOGLE_SGE = "google_sge"
+    BING = "bing_search"
+    YANDEX = "yandex_search"
 
-    # TODO: This method must be implemented to retrieve documents.
+
+class ParsingType(str, Enum):
+    """
+    Enum representing the parsing types supported by Nimble
+    """
+
+    PLAIN_TEXT = "plain_text"
+    MARKDOWN = "markdown"
+    SIMPLIFIED_HTML = "simplified_html"
+
+
+class NimbleRetriever(BaseRetriever):
+    """Nimbleway Search API retriever.
+    Allows you to retrieve search results from Google, Bing, and Yandex.
+    Visit https://www.nimbleway.com/ and sign up to receive an API
+    key and to see more info.
+
+    Args:
+        api_key: The API key for Nimbleway.
+        search_engine: The search engine to use. Default is Google.
+    """
+
+    api_key: str
+    k: int = 3
+    search_engine: SearchEngine = SearchEngine.GOOGLE
+    parse: bool = False
+    render: bool = True
+    locale: str = "en"
+    country: str = "US"
+    parsing_type: ParsingType = ParsingType.PLAIN_TEXT
+
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun, **kwargs: Any
     ) -> List[Document]:
-        k = kwargs.get("k", self.k)
-        return [
-            Document(page_content=f"Result {i} for query: {query}") for i in range(k)
-        ]
+        request_body = {
+            "query": query,
+            "num_results": kwargs.get("k", self.k),
+            "search_engine": kwargs.get("search_engine", self.search_engine),
+            "parse": kwargs.get("parse", self.parse),
+            "render": kwargs.get("render", self.render),
+            "locale": kwargs.get("locale", self.locale),
+            "country": kwargs.get("country", self.country),
+            "parsing_type": kwargs.get("parsing_type", self.parsing_type),
+        }
 
-    # optional: add custom async implementations here
-    # async def _aget_relevant_documents(
-    #     self,
-    #     query: str,
-    #     *,
-    #     run_manager: AsyncCallbackManagerForRetrieverRun,
-    #     **kwargs: Any,
-    # ) -> List[Document]: ...
+        response = requests.post(
+            "https://searchit-server.crawlit.live/search",
+            json=request_body,
+            headers={
+                "Authorization": f"Basic {self.api_key or os.getenv('NIMBLE_API_KEY')}",
+                "Content-Type": "application/json",
+            },
+        )
+        response.raise_for_status()
+        raw_json_content = response.json()
+        docs = [
+            Document(
+                page_content=doc.get("page_content", ""),
+                metadata={
+                    "title": doc.get("metadata", {}).get("title", ""),
+                    "snippet": doc.get("metadata", {}).get("snippet", ""),
+                    "url": doc.get("metadata", {}).get("url", ""),
+                    "position": doc.get("metadata", {}).get("position", -1),
+                    "entity_type": doc.get("metadata", {}).get("entity_type", ""),
+                },
+            )
+            for doc in raw_json_content.get("body", [])
+        ]
+        return docs
