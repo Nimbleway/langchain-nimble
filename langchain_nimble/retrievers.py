@@ -32,25 +32,31 @@ class ParsingType(str, Enum):
 class NimbleRetriever(BaseRetriever):
     """Nimbleway Search API retriever.
     Allows you to retrieve search results from Google, Bing, and Yandex.
-    Visit https://www.nimbleway.com/ and sign up to receive an API
-    key and to see more info.
+    Visit https://www.nimbleway.com/ and sign up to receive an API key and to see more info.
 
     Args:
         api_key: The API key for Nimbleway.
         search_engine: The search engine to use. Default is Google.
+        render: Whether to render the results web sites. Default is True.
+        locale: The locale to use. Default is "en".
+        country: The country to use. Default is "US".
+        parsing_type: The parsing type to use. Default is "plain_text".
+        links: The list of links to search for. Default is None. (if enabled will
+        ignore the query)
     """
 
     api_key: str = None
     k: int = 3
     search_engine: SearchEngine = SearchEngine.GOOGLE
-    parse: bool = False
     render: bool = True
     locale: str = "en"
     country: str = "US"
     parsing_type: ParsingType = ParsingType.PLAIN_TEXT
+    links: List[str] = None
 
     def _get_relevant_documents(
-        self, query: str, *, run_manager: CallbackManagerForRetrieverRun, **kwargs: Any
+            self, query: str, *, run_manager: CallbackManagerForRetrieverRun,
+            **kwargs: Any
     ) -> List[Document]:
         request_body = {
             "query": query,
@@ -61,10 +67,11 @@ class NimbleRetriever(BaseRetriever):
             "locale": kwargs.get("locale", self.locale),
             "country": kwargs.get("country", self.country),
             "parsing_type": kwargs.get("parsing_type", self.parsing_type),
+            "links": kwargs.get("links", self.links)
         }
-
+        route = "extract" if self.links else "search"
         response = requests.post(
-            "https://searchit-server.crawlit.live/search",
+            f"https://searchit-server.crawlit.live/{route}",
             json=request_body,
             headers={
                 "Authorization": f"Basic {self.api_key or os.getenv('NIMBLE_API_KEY')}",
