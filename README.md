@@ -17,11 +17,11 @@ You can get your API key from [Nimble's website](https://nimbleway.com/)
 Just, go to the log-in page and sign up for a new account. After that, you can get your API key from the dashboard.
 
 ## Retrievers
-`NimbleRetriever` class exposes LLMs from Nimble.
+`NimbleSearchRetriever` class exposes LLMs from Nimble.
 
 ```python
-from langchain_nimble import NimbleRetriever
+from langchain_nimble import NimbleSearchRetriever
 
-retriever = NimbleRetriever()
+retriever = NimbleSearchRetriever()
 retriever.invoke("Nimbleway")
 ```

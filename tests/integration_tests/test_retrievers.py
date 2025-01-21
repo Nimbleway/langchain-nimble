@@ -4,14 +4,14 @@ from langchain_tests.integration_tests import (
     RetrieversIntegrationTests,
 )
 
-from langchain_nimble.retrievers import NimbleRetriever
+from langchain_nimble.retrievers import NimbleSearchRetriever
 
 
-class TestNimbleRetriever(RetrieversIntegrationTests):
+class TestNimbleSearchRetriever(RetrieversIntegrationTests):
     @property
-    def retriever_constructor(self) -> Type[NimbleRetriever]:
+    def retriever_constructor(self) -> Type[NimbleSearchRetriever]:
         """Get an empty vectorstore for unit tests."""
-        return NimbleRetriever
+        return NimbleSearchRetriever
 
     @property
     def retriever_constructor_params(self) -> dict:
