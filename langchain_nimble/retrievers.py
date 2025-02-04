@@ -49,11 +49,11 @@ class NimbleSearchRetriever(BaseRetriever):
     api_key: str = None
     k: int = 3
     search_engine: SearchEngine = SearchEngine.GOOGLE
-    render: bool = True
+    render: bool = False
     locale: str = "en"
     country: str = "US"
     parsing_type: ParsingType = ParsingType.PLAIN_TEXT
-    links: List[str] = None
+    links: List[str] = []
 
     def _get_relevant_documents(
             self, query: str, *, run_manager: CallbackManagerForRetrieverRun,
@@ -62,12 +62,13 @@ class NimbleSearchRetriever(BaseRetriever):
         request_body = {
             "query": query,
             "num_results": kwargs.get("k", self.k),
-            "search_engine": kwargs.get("search_engine", self.search_engine),
-            "parse": kwargs.get("parse", self.parse),
+            "search_engine": kwargs.get("search_engine",
+                                        self.search_engine).value,
             "render": kwargs.get("render", self.render),
             "locale": kwargs.get("locale", self.locale),
             "country": kwargs.get("country", self.country),
-            "parsing_type": kwargs.get("parsing_type", self.parsing_type),
+            "parsing_type": kwargs.get("parsing_type",
+                                       self.parsing_type).value,
             "links": kwargs.get("links", self.links)
         }
         route = "extract" if self.links else "search"
@@ -89,7 +90,8 @@ class NimbleSearchRetriever(BaseRetriever):
                     "snippet": doc.get("metadata", {}).get("snippet", ""),
                     "url": doc.get("metadata", {}).get("url", ""),
                     "position": doc.get("metadata", {}).get("position", -1),
-                    "entity_type": doc.get("metadata", {}).get("entity_type", ""),
+                    "entity_type": doc.get("metadata", {}).get("entity_type",
+                                                               ""),
                 },
             )
             for doc in raw_json_content.get("body", [])
