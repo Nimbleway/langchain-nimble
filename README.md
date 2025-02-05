@@ -25,3 +25,5 @@ from langchain_nimble import NimbleSearchRetriever
 retriever = NimbleSearchRetriever()
 retriever.invoke("Nimbleway")
 ```
+
+For the full reference with examples please see [our documentation](docs/nimbleway.ipynb).
