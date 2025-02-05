@@ -4,11 +4,11 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "langchain-nimble"
-version = "0.1.1"
+version = "0.1.2"
 description = "An integration package connecting Nimble and LangChain"
 authors = []
 readme = "README.md"
-repository = "https://github.com/langchain-ai/langchain"
+repository = "https://github.com/Nimbleway/langchain-nimble"
 license = "MIT"
 
 [tool.mypy]
