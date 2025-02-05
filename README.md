@@ -26,4 +26,4 @@ retriever = NimbleSearchRetriever()
 retriever.invoke("Nimbleway")
 ```
 
-For the full reference with examples please see [our documentation](docs/nimbleway.ipynb).
+For the full reference with examples please see [our documentation](https://github.com/Nimbleway/langchain-nimble/blob/main/docs/nimbleway.ipynb).
