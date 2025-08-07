@@ -73,7 +73,7 @@ class NimbleSearchRetriever(BaseRetriever):
         }
         route = "extract" if self.links else "search"
         response = requests.post(
-            f"https://searchit-server.crawlit.live/{route}",
+            f"https://nimble-retriever.webit.live/{route}",
             json=request_body,
             headers={
                 "Authorization": f"Basic {self.api_key or os.getenv('NIMBLE_API_KEY')}",
