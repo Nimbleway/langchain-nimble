@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "langchain-nimble"
-version = "0.1.3"
+version = "1.0.0"
 description = "An integration package connecting Nimble and LangChain"
 authors = []
 readme = "README.md"
