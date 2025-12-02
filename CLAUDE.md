@@ -36,24 +36,27 @@ tests/
 ## Key Commands
 
 ```bash
-# Install dependencies
-poetry install
+# Sync dependencies (with dev extras)
+uv sync --extra dev
+
+# Sync just core dependencies
+uv sync
 
 # Run tests (unit only, fast)
-pytest tests/unit_tests/
+uv run pytest tests/unit_tests/
 
 # Run integration tests (requires NIMBLE_API_KEY env var)
-pytest tests/integration_tests/
+uv run pytest tests/integration_tests/
 
 # Run all tests
-pytest
+uv run pytest
 
 # Type checking
-mypy langchain_nimble/
+uv run mypy langchain_nimble/
 
 # Linting
-ruff check .
-ruff format .
+uv run ruff check .
+uv run ruff format .
 ```
 
 ---
