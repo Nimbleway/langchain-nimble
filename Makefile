@@ -36,13 +36,13 @@ lint_tests: PYTHON_FILES=tests
 lint_tests: MYPY_CACHE=.mypy_cache_test
 
 lint lint_package lint_tests:
-	[ "$(PYTHON_FILES)" = "" ] || uv run ruff check $(PYTHON_FILES)
-	[ "$(PYTHON_FILES)" = "" ] || uv run ruff format $(PYTHON_FILES) --diff
-	[ "$(PYTHON_FILES)" = "" ] || mkdir -p $(MYPY_CACHE) && uv run mypy $(PYTHON_FILES) --cache-dir $(MYPY_CACHE)
+	[ "$(PYTHON_FILES)" = "" ] || uv run --all-groups ruff check $(PYTHON_FILES)
+	[ "$(PYTHON_FILES)" = "" ] || uv run --all-groups ruff format $(PYTHON_FILES) --diff
+	[ "$(PYTHON_FILES)" = "" ] || mkdir -p $(MYPY_CACHE) && uv run --all-groups mypy $(PYTHON_FILES) --cache-dir $(MYPY_CACHE)
 
 format:
-	[ "$(PYTHON_FILES)" = "" ] || uv run ruff format $(PYTHON_FILES)
-	[ "$(PYTHON_FILES)" = "" ] || uv run ruff check --select I --fix $(PYTHON_FILES)
+	[ "$(PYTHON_FILES)" = "" ] || uv run --all-groups ruff format $(PYTHON_FILES)
+	[ "$(PYTHON_FILES)" = "" ] || uv run --all-groups ruff check --select I --fix $(PYTHON_FILES)
 
 check_imports: $(shell find langchain_nimble -name '*.py')
 	uv run python ./scripts/check_imports.py $^
