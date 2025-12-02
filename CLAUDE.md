@@ -36,8 +36,8 @@ tests/
 ## Key Commands
 
 ```bash
-# Sync dependencies (with dev extras)
-uv sync --extra dev
+# Sync all development dependencies
+uv sync --group test --group lint --group typing
 
 # Sync just core dependencies
 uv sync
