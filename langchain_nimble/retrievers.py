@@ -1,8 +1,8 @@
 import os
 from enum import Enum
-from typing import List, Any
+from typing import Any, List
 
-import requests
+import httpx
 from langchain_core.callbacks.manager import CallbackManagerForRetrieverRun
 from langchain_core.documents.base import Document
 from langchain_core.retrievers import BaseRetriever
@@ -46,7 +46,7 @@ class NimbleSearchRetriever(BaseRetriever):
         ignore the query)
     """
 
-    api_key: str = None
+    api_key: str | None = None
     k: int = 3
     search_engine: SearchEngine = SearchEngine.GOOGLE
     render: bool = False
@@ -56,23 +56,20 @@ class NimbleSearchRetriever(BaseRetriever):
     links: List[str] = []
 
     def _get_relevant_documents(
-            self, query: str, *, run_manager: CallbackManagerForRetrieverRun,
-            **kwargs: Any
+        self, query: str, *, run_manager: CallbackManagerForRetrieverRun, **kwargs: Any
     ) -> List[Document]:
         request_body = {
             "query": query,
             "num_results": kwargs.get("k", self.k),
-            "search_engine": kwargs.get("search_engine",
-                                        self.search_engine).value,
+            "search_engine": kwargs.get("search_engine", self.search_engine).value,
             "render": kwargs.get("render", self.render),
             "locale": kwargs.get("locale", self.locale),
             "country": kwargs.get("country", self.country),
-            "parsing_type": kwargs.get("parsing_type",
-                                       self.parsing_type).value,
-            "links": kwargs.get("links", self.links)
+            "parsing_type": kwargs.get("parsing_type", self.parsing_type).value,
+            "links": kwargs.get("links", self.links),
         }
         route = "extract" if self.links else "search"
-        response = requests.post(
+        response = httpx.post(
             f"https://nimble-retriever.webit.live/{route}",
             json=request_body,
             headers={
@@ -90,8 +87,7 @@ class NimbleSearchRetriever(BaseRetriever):
                     "snippet": doc.get("metadata", {}).get("snippet", ""),
                     "url": doc.get("metadata", {}).get("url", ""),
                     "position": doc.get("metadata", {}).get("position", -1),
-                    "entity_type": doc.get("metadata", {}).get("entity_type",
-                                                               ""),
+                    "entity_type": doc.get("metadata", {}).get("entity_type", ""),
                 },
             )
             for doc in raw_json_content.get("body", [])
