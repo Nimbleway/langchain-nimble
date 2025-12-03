@@ -1,3 +1,5 @@
+"""LangChain integration for Nimble's web search and content retrieval API."""
+
 from importlib import metadata
 
 from langchain_nimble.retrievers import NimbleSearchRetriever

@@ -1,3 +1,5 @@
+"""Nimble Search API retriever implementation."""
+
 import os
 from enum import Enum
 from typing import Any
@@ -9,9 +11,7 @@ from langchain_core.retrievers import BaseRetriever
 
 
 class SearchEngine(str, Enum):
-    """
-    Enum representing the search engines supported by Nimble
-    """
+    """Enum representing the search engines supported by Nimble."""
 
     GOOGLE = "google_search"
     GOOGLE_SGE = "google_sge"
@@ -20,9 +20,7 @@ class SearchEngine(str, Enum):
 
 
 class ParsingType(str, Enum):
-    """
-    Enum representing the parsing types supported by Nimble
-    """
+    """Enum representing the parsing types supported by Nimble."""
 
     PLAIN_TEXT = "plain_text"
     MARKDOWN = "markdown"
@@ -31,9 +29,10 @@ class ParsingType(str, Enum):
 
 class NimbleSearchRetriever(BaseRetriever):
     """Nimbleway Search API retriever.
+
     Allows you to retrieve search results from Google, Bing, and Yandex.
     Visit https://www.nimbleway.com/ and sign up to receive
-     an API key and to see more info.
+    an API key and to see more info.
 
     Args:
         api_key: The API key for Nimbleway.
@@ -81,7 +80,7 @@ class NimbleSearchRetriever(BaseRetriever):
         )
         response.raise_for_status()
         raw_json_content = response.json()
-        docs = [
+        return [
             Document(
                 page_content=doc.get("page_content", ""),
                 metadata={
@@ -94,4 +93,3 @@ class NimbleSearchRetriever(BaseRetriever):
             )
             for doc in raw_json_content.get("body", [])
         ]
-        return docs
