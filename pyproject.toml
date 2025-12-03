@@ -21,7 +21,7 @@ Homepage = "https://www.nimbleway.com"
 Documentation = "https://docs.langchain.com/oss/python/integrations/providers/nimble"
 Source = "https://github.com/Nimbleway/langchain-nimble"
 Repository = "https://github.com/Nimbleway/langchain-nimble"
-Changelog = "https://github.com/Nimbleway/langchain-nimble/releases"
+"Release Notes" = "https://github.com/Nimbleway/langchain-nimble/releases"
 Twitter = "https://x.com/LangChainAI"
 Slack = "https://www.langchain.com/join-community"
 Reddit = "https://www.reddit.com/r/LangChain/"
@@ -53,6 +53,9 @@ typing = [
 [tool.mypy]
 disallow_untyped_defs = true
 plugins = ["pydantic.mypy"]
+
+[tool.ruff]
+target-version = "py310"
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -124,6 +127,14 @@ ignore-var-parameters = true  # ignore missing documentation for *args and **kwa
     "S311",   # Standard pseudo-random generators are not suitable for cryptographic purposes
     "SLF001", # Private member access in tests
     "D",      # Docstring checks in tests
+]
+"examples/**/*.py" = [
+    "T201",   # Allow print statements in examples
+    "D",      # Docstring checks in examples
+]
+"docs/**/*.ipynb" = [
+    "T201",   # Allow print statements in notebooks
+    "E501",   # Allow long lines in notebooks
 ]
 "scripts/*.py" = [
     "INP001", # Not a package
