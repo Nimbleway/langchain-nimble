@@ -7,10 +7,10 @@ Project-specific context and patterns for working on langchain-nimble.
 ## Tech Stack
 
 - **Python:** 3.10+ (using modern union syntax: `str | None`)
-- **HTTP Client:** `httpx` (sync + async)
+- **HTTP Client:** httpx (sync + async)
 - **Framework:** LangChain Core (retrievers, tools, documents)
 - **Validation:** Pydantic v2 models
-- **Testing:** pytest, pytest-asyncio, langchain-tests
+- **Testing:** pytest, pytest-asyncio, pytest-mock, syrupy, freezegun, langchain-tests
 - **Linting:** ruff, mypy --strict
 
 ---
@@ -37,7 +37,9 @@ tests/
 
 ```bash
 # Sync all development dependencies
-uv sync --group test --group lint --group typing
+uv sync --all-groups
+# Or specify individual groups:
+# uv sync --group test --group lint --group typing --group dev
 
 # Sync just core dependencies
 uv sync
@@ -164,6 +166,13 @@ from pydantic import BaseModel, Field, SecretStr
 # Local
 from ._utilities import create_async_client, get_api_key
 ```
+
+### Docstring Requirements
+- **Style:** Google-style convention (enforced by pydocstyle)
+- **Module-level:** All Python modules must have docstrings
+- **Classes:** Multi-line with blank line after summary
+- **Enums:** One-line with period
+- **Functions:** Document parameters, return values, and raises
 
 ### Error Handling
 - Use specific exception types, not generic `Exception`
