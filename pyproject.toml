@@ -10,14 +10,14 @@ license = { text = "MIT" }
 readme = "README.md"
 authors = []
 
-requires-python = ">=3.9"
+requires-python = ">=3.10,<4.0"
 dependencies = [
     "langchain-core>=0.3.15,<0.4.0",
     "httpx>=0.28.1",
 ]
 
 [project.urls]
-Homepage = "https://www.nimbelway.com"
+Homepage = "https://www.nimbleway.com"
 Documentation = "https://docs.langchain.com/oss/python/integrations/providers/nimble"
 Repository = "https://github.com/Nimbleway/langchain-nimble"
 Changelog = "https://github.com/Nimbleway/langchain-nimble/releases"

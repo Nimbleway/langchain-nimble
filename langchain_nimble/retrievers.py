@@ -1,6 +1,6 @@
 import os
 from enum import Enum
-from typing import Any, List
+from typing import Any
 
 import httpx
 from langchain_core.callbacks.manager import CallbackManagerForRetrieverRun
@@ -37,6 +37,7 @@ class NimbleSearchRetriever(BaseRetriever):
 
     Args:
         api_key: The API key for Nimbleway.
+        api_base_url: Base URL for the API. Default is production endpoint.
         search_engine: The search engine to use. Default is Google.
         render: Whether to render the results web sites. Default is True.
         locale: The locale to use. Default is "en".
@@ -47,17 +48,18 @@ class NimbleSearchRetriever(BaseRetriever):
     """
 
     api_key: str | None = None
+    api_base_url: str = "https://nimble-retriever.webit.live"
     k: int = 3
     search_engine: SearchEngine = SearchEngine.GOOGLE
     render: bool = False
     locale: str = "en"
     country: str = "US"
     parsing_type: ParsingType = ParsingType.PLAIN_TEXT
-    links: List[str] = []
+    links: list[str] = []
 
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun, **kwargs: Any
-    ) -> List[Document]:
+    ) -> list[Document]:
         request_body = {
             "query": query,
             "num_results": kwargs.get("k", self.k),
@@ -70,7 +72,7 @@ class NimbleSearchRetriever(BaseRetriever):
         }
         route = "extract" if self.links else "search"
         response = httpx.post(
-            f"https://nimble-retriever.webit.live/{route}",
+            f"{self.api_base_url}/{route}",
             json=request_body,
             headers={
                 "Authorization": f"Basic {self.api_key or os.getenv('NIMBLE_API_KEY')}",
