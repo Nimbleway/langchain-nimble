@@ -2,13 +2,13 @@
 
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class SearchEngine(str, Enum):
-    """Enum representing the search engines supported by Nimble.
+    """Search engines supported by Nimble.
 
-    ⚠️ DEPRECATED: This parameter is ignored. Use 'topic' parameter instead.
+    ⚠️ DEPRECATED: Use 'topic' parameter instead.
     """
 
     GOOGLE = "google_search"
@@ -18,18 +18,15 @@ class SearchEngine(str, Enum):
 
 
 class SearchTopic(str, Enum):
-    """Enum representing the search topic/specialization.
+    """Search topic/specialization."""
 
-    Controls which search engine and parameters are used internally.
-    """
-
-    GENERAL = "general"  # Default - broad web search
-    NEWS = "news"  # Real-time news search
-    LOCATION = "location"  # Location-based search
+    GENERAL = "general"
+    NEWS = "news"
+    LOCATION = "location"
 
 
 class ParsingType(str, Enum):
-    """Enum representing the parsing types supported by Nimble."""
+    """Content parsing format."""
 
     PLAIN_TEXT = "plain_text"
     MARKDOWN = "markdown"
@@ -54,11 +51,7 @@ class BaseParams(BaseModel):
 
 
 class SearchParams(BaseParams):
-    """Search parameters for Nimble Search API /search endpoint.
-
-    This model provides parameters for the search retriever and tool.
-    The API will validate all constraints server-side.
-    """
+    """Search parameters for /search endpoint."""
 
     query: str = Field(
         description="Search query string",
@@ -81,21 +74,10 @@ class SearchParams(BaseParams):
     )
     deep_search: bool = Field(
         default=True,
-        description="""Enable deep search mode for comprehensive research.
-
-        When True:
-        - Fetches and extracts full page content for each search result
-        - Provides detailed information, not just snippets
-        - Takes longer but returns richer data
-
-        When False:
-        - Returns only metadata (title, snippet, URL)
-        - Faster response times
-        - Good for quick lookups
-
-        Use deep_search=True for: In-depth research, analysis, comprehensive answers
-        Use deep_search=False for: Quick facts, simple lookups, when speed matters
-        """,
+        description=(
+            "Enable deep search to fetch full page content. "
+            "When False, returns only metadata (title, snippet, URL)."
+        ),
     )
     include_answer: bool = Field(
         default=False,
@@ -120,13 +102,16 @@ class SearchParams(BaseParams):
         description="Filter results before this date (format: YYYY-MM-DD or YYYY)",
     )
 
+    @model_validator(mode="after")
+    def _validate_logic(self) -> "SearchParams":
+        if self.deep_search and self.include_answer:
+            msg = "`include_answer` cannot be True when `deep_search` is True."
+            raise ValueError(msg)
+        return self
+
 
 class ExtractParams(BaseParams):
-    """Extract parameters for Nimble Search API /extract endpoint.
-
-    This model provides parameters for the extract retriever functionality.
-    The API will validate all constraints server-side.
-    """
+    """Extract parameters for /extract endpoint."""
 
     links: list[str] = Field(
         min_length=1,
