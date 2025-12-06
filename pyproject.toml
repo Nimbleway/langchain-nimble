@@ -102,6 +102,7 @@ ignore = [
     "ISC001",  # Messes with the formatter
     "PERF203", # Rarely useful
     "S112",    # Rarely useful
+    "SIM105",  # Rarely useful (contextlib.suppress vs try-except-pass)
     "RUF012",  # Doesn't play well with Pydantic
     "SLF001",  # Private member access
 ]
