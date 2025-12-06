@@ -1,6 +1,5 @@
 """Nimble Search API retriever implementation."""
 
-import os
 from enum import Enum
 from typing import Any
 
@@ -8,6 +7,8 @@ import httpx
 from langchain_core.callbacks.manager import CallbackManagerForRetrieverRun
 from langchain_core.documents.base import Document
 from langchain_core.retrievers import BaseRetriever
+from langchain_core.utils import from_env, secret_from_env
+from pydantic import Field, SecretStr
 
 
 class SearchEngine(str, Enum):
@@ -36,7 +37,7 @@ class NimbleSearchRetriever(BaseRetriever):
 
     Args:
         api_key: The API key for Nimbleway.
-        api_base_url: Base URL for the API. Default is production endpoint.
+        base_url: Base URL for the API. Default is production endpoint.
         search_engine: The search engine to use. Default is Google.
         render: Whether to render the results web sites. Default is True.
         locale: The locale to use. Default is "en".
@@ -46,8 +47,29 @@ class NimbleSearchRetriever(BaseRetriever):
         ignore the query)
     """
 
-    api_key: str | None = None
-    api_base_url: str = "https://nimble-retriever.webit.live"
+    nimble_api_key: SecretStr = Field(
+        alias="api_key",
+        default_factory=secret_from_env("NIMBLE_API_KEY", default=""),
+    )
+    """API key for Nimble Search API.
+
+    If a value isn't passed in, will attempt to read from `NIMBLE_API_KEY`
+    environment variable.
+    """
+
+    nimble_api_url: str | None = Field(
+        alias="base_url",
+        default_factory=from_env(
+            "NIMBLE_API_URL",
+            default="https://nimble-retriever.webit.live",
+        ),
+    )
+    """Base URL for API requests.
+
+    If a value isn't passed in, will attempt to read from `NIMBLE_API_URL`
+    environment variable. Defaults to `https://nimble-retriever.webit.live`.
+    """
+
     k: int = 3
     search_engine: SearchEngine = SearchEngine.GOOGLE
     render: bool = False
@@ -71,12 +93,13 @@ class NimbleSearchRetriever(BaseRetriever):
         }
         route = "extract" if self.links else "search"
         response = httpx.post(
-            f"{self.api_base_url}/{route}",
+            f"{self.nimble_api_url}/{route}",
             json=request_body,
             headers={
-                "Authorization": f"Basic {self.api_key or os.getenv('NIMBLE_API_KEY')}",
+                "Authorization": f"Basic {self.nimble_api_key.get_secret_value()}",
                 "Content-Type": "application/json",
             },
+            timeout=60,
         )
         response.raise_for_status()
         raw_json_content = response.json()
