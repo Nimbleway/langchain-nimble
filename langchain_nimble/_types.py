@@ -65,6 +65,8 @@ class SearchParams(BaseParams):
     )
     num_results: int = Field(
         default=3,
+        ge=1,
+        le=100,
         description="Number of results to return (1-100)",
     )
     search_engine: SearchEngine | None = Field(
@@ -127,6 +129,8 @@ class ExtractParams(BaseParams):
     """
 
     links: list[str] = Field(
+        min_length=1,
+        max_length=20,
         description="List of URLs to extract content from (1-20 URLs)",
     )
     driver: str = Field(
