@@ -1,6 +1,5 @@
 """Nimble Search API retriever implementation."""
 
-from enum import Enum
 from typing import Any
 
 import httpx
@@ -10,22 +9,7 @@ from langchain_core.retrievers import BaseRetriever
 from langchain_core.utils import from_env, secret_from_env
 from pydantic import Field, SecretStr
 
-
-class SearchEngine(str, Enum):
-    """Enum representing the search engines supported by Nimble."""
-
-    GOOGLE = "google_search"
-    GOOGLE_SGE = "google_sge"
-    BING = "bing_search"
-    YANDEX = "yandex_search"
-
-
-class ParsingType(str, Enum):
-    """Enum representing the parsing types supported by Nimble."""
-
-    PLAIN_TEXT = "plain_text"
-    MARKDOWN = "markdown"
-    SIMPLIFIED_HTML = "simplified_html"
+from ._types import ParsingType, SearchEngine
 
 
 class NimbleSearchRetriever(BaseRetriever):
