@@ -62,7 +62,7 @@ def create_sync_client(
     return _SyncHttpxClientWrapper(
         base_url=base_url,
         headers={
-            "Authorization": f"Basic {api_key}",
+            "Authorization": f"Bearer {api_key}",
             "X-Client-Source": "langchain-nimble",
             "Content-Type": "application/json",
         },
@@ -97,7 +97,7 @@ def create_async_client(
     return _AsyncHttpxClientWrapper(
         base_url=base_url,
         headers={
-            "Authorization": f"Basic {api_key}",
+            "Authorization": f"Bearer {api_key}",
             "X-Client-Source": "langchain-nimble",
             "Content-Type": "application/json",
         },

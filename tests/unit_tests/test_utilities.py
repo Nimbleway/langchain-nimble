@@ -17,7 +17,7 @@ def test_sync_client_creation() -> None:
 
     assert isinstance(client, _SyncHttpxClientWrapper)
     assert str(client.base_url) == "https://api.example.com"
-    assert client.headers["Authorization"] == "Basic test-key"
+    assert client.headers["Authorization"] == "Bearer test-key"
     assert client.headers["X-Client-Source"] == "langchain-nimble"
     assert client.headers["Content-Type"] == "application/json"
     assert client.timeout.read == 100.0
@@ -32,7 +32,7 @@ async def test_async_client_creation() -> None:
 
     assert isinstance(client, _AsyncHttpxClientWrapper)
     assert str(client.base_url) == "https://api.example.com"
-    assert client.headers["Authorization"] == "Basic test-key"
+    assert client.headers["Authorization"] == "Bearer test-key"
     assert client.headers["X-Client-Source"] == "langchain-nimble"
     assert client.headers["Content-Type"] == "application/json"
     assert client.timeout.read == 100.0
