@@ -5,18 +5,6 @@ from enum import Enum
 from pydantic import BaseModel, Field, model_validator
 
 
-class SearchEngine(str, Enum):
-    """Search engines supported by Nimble.
-
-    ⚠️ DEPRECATED: Use 'topic' parameter instead.
-    """
-
-    GOOGLE = "google_search"
-    GOOGLE_SGE = "google_sge"
-    BING = "bing_search"
-    YANDEX = "yandex_search"
-
-
 class SearchTopic(str, Enum):
     """Search topic/specialization."""
 
@@ -61,12 +49,6 @@ class SearchParams(BaseParams):
         ge=1,
         le=100,
         description="Number of results to return (1-100)",
-    )
-    search_engine: SearchEngine | None = Field(
-        default=None,
-        description=(
-            "⚠️ DEPRECATED: This parameter is ignored. Use 'topic' parameter instead."
-        ),
     )
     topic: SearchTopic = Field(
         default=SearchTopic.GENERAL,

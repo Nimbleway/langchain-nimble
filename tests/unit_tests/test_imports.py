@@ -4,6 +4,7 @@ from langchain_nimble import __all__
 
 EXPECTED_ALL = [
     "NimbleSearchRetriever",
+    "NimbleExtractRetriever",
     "__version__",
 ]
 
