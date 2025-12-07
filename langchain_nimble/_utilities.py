@@ -49,20 +49,18 @@ class _RetryTransport(httpx.HTTPTransport):
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         """Retry 5xx errors with exponential backoff (1s, 2s, 4s)."""
-        response = None
         for attempt in range(self.max_retries + 1):
             try:
                 response = super().handle_request(request)
-                if response.status_code >= 500 and attempt < self.max_retries:
-                    time.sleep(2.0**attempt)
-                    continue
-                return response
+                if response.status_code < 500 or attempt == self.max_retries:
+                    return response
+                time.sleep(2.0**attempt)
             except httpx.RequestError:
-                if attempt < self.max_retries:
-                    time.sleep(2.0**attempt)
-                    continue
-                raise
-        return response  # type: ignore[return-value]
+                if attempt == self.max_retries:
+                    raise
+                time.sleep(2.0**attempt)
+        msg = "Retry loop completed unexpectedly"
+        raise RuntimeError(msg)
 
 
 class _AsyncRetryTransport(httpx.AsyncHTTPTransport):
@@ -74,20 +72,18 @@ class _AsyncRetryTransport(httpx.AsyncHTTPTransport):
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         """Retry 5xx errors with exponential backoff (1s, 2s, 4s)."""
-        response = None
         for attempt in range(self.max_retries + 1):
             try:
                 response = await super().handle_async_request(request)
-                if response.status_code >= 500 and attempt < self.max_retries:
-                    await asyncio.sleep(2.0**attempt)
-                    continue
-                return response
+                if response.status_code < 500 or attempt == self.max_retries:
+                    return response
+                await asyncio.sleep(2.0**attempt)
             except httpx.RequestError:
-                if attempt < self.max_retries:
-                    await asyncio.sleep(2.0**attempt)
-                    continue
-                raise
-        return response  # type: ignore[return-value]
+                if attempt == self.max_retries:
+                    raise
+                await asyncio.sleep(2.0**attempt)
+        msg = "Retry loop completed unexpectedly"
+        raise RuntimeError(msg)
 
 
 @contextmanager
