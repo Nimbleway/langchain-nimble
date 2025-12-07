@@ -25,7 +25,15 @@ Just go to the log-in page and sign up for a new account. After that, you can ge
 from langchain_nimble import NimbleSearchRetriever
 
 retriever = NimbleSearchRetriever(num_results=3, topic="general")
-documents = await retriever.ainvoke("latest LangChain release")
+
+# Async usage:
+# import asyncio
+# async def main():
+#     documents = await retriever.ainvoke("latest LangChain release")
+# asyncio.run(main())
+
+# Synchronous usage:
+documents = retriever.invoke("latest LangChain release")
 ```
 
 ### Extract Retriever
@@ -35,7 +43,15 @@ documents = await retriever.ainvoke("latest LangChain release")
 from langchain_nimble import NimbleExtractRetriever
 
 retriever = NimbleExtractRetriever()
-document = await retriever.ainvoke("https://www.langchain.com")
+
+# Async usage:
+# import asyncio
+# async def main():
+#     document = await retriever.ainvoke("https://www.langchain.com")
+# asyncio.run(main())
+
+# Synchronous usage:
+document = retriever.invoke("https://www.langchain.com")
 ```
 
 For the full reference with examples please see [our documentation](https://github.com/Nimbleway/langchain-nimble/blob/main/docs/nimbleway.ipynb).
