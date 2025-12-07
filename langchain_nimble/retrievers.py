@@ -14,7 +14,7 @@ from langchain_core.utils import from_env, secret_from_env
 from pydantic import Field, SecretStr, model_validator
 
 from ._types import ExtractParams, SearchParams
-from ._utilities import create_async_client, create_sync_client
+from ._utilities import create_async_client, create_sync_client, handle_api_errors
 
 
 class _NimbleBaseRetriever(BaseRetriever):
@@ -31,6 +31,12 @@ class _NimbleBaseRetriever(BaseRetriever):
             default="https://nimble-retriever.webit.live",
         ),
     )
+    max_retries: int = Field(
+        default=2,
+        ge=0,
+        le=5,
+        description="Maximum retry attempts for 5xx errors (0 disables retries)",
+    )
 
     locale: str = "en"
     country: str = "US"
@@ -41,15 +47,19 @@ class _NimbleBaseRetriever(BaseRetriever):
 
     @model_validator(mode="after")
     def initialize_clients(self) -> "_NimbleBaseRetriever":
-        """Initialize HTTP clients for sync and async operations."""
+        """Initialize HTTP clients."""
         api_key = self.nimble_api_key.get_secret_value()
         if not api_key:
             msg = "API key required. Set NIMBLE_API_KEY or pass api_key parameter."
             raise ValueError(msg)
 
         base_url = self.nimble_api_url or "https://nimble-retriever.webit.live"
-        self._sync_client = create_sync_client(api_key=api_key, base_url=base_url)
-        self._async_client = create_async_client(api_key=api_key, base_url=base_url)
+        self._sync_client = create_sync_client(
+            api_key=api_key, base_url=base_url, max_retries=self.max_retries
+        )
+        self._async_client = create_async_client(
+            api_key=api_key, base_url=base_url, max_retries=self.max_retries
+        )
         return self
 
     @abstractmethod
@@ -69,11 +79,12 @@ class _NimbleBaseRetriever(BaseRetriever):
             msg = "Sync client not initialized"
             raise RuntimeError(msg)
 
-        response = self._sync_client.post(
-            self._get_endpoint(), json=self._build_request_body(query, **kwargs)
-        )
-        response.raise_for_status()
-        return self._parse_response(response.json())
+        with handle_api_errors(operation=f"{self._get_endpoint()} request"):
+            response = self._sync_client.post(
+                self._get_endpoint(), json=self._build_request_body(query, **kwargs)
+            )
+            response.raise_for_status()
+            return self._parse_response(response.json())
 
     async def _aget_relevant_documents(
         self,
@@ -86,14 +97,15 @@ class _NimbleBaseRetriever(BaseRetriever):
             msg = "Async client not initialized"
             raise RuntimeError(msg)
 
-        response = await self._async_client.post(
-            self._get_endpoint(), json=self._build_request_body(query, **kwargs)
-        )
-        response.raise_for_status()
-        return self._parse_response(response.json())
+        with handle_api_errors(operation=f"{self._get_endpoint()} request"):
+            response = await self._async_client.post(
+                self._get_endpoint(), json=self._build_request_body(query, **kwargs)
+            )
+            response.raise_for_status()
+            return self._parse_response(response.json())
 
     def _parse_response(self, raw_json_content: dict[str, Any]) -> list[Document]:
-        """Parse API response into Document objects."""
+        """Parse API response into Documents."""
         return [
             Document(
                 page_content=doc.get("page_content", ""),
