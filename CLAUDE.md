@@ -95,15 +95,18 @@ uv run ruff format .
    - Mock HTTP calls with `unittest.mock`
    - Fast, no network access
    - Test individual functions
+   - Benchmark tests for performance tracking
 
 2. **Integration Tests** (`tests/integration_tests/`)
    - Real Nimble API calls
    - Requires `NIMBLE_API_KEY` environment variable
    - No mocks - test actual behavior
 
-3. **LangChain Standard Tests** (`tests/unit_tests/test_standard.py`)
-   - Inherit from `RetrieversUnitTests`, `ToolsUnitTests`
-   - Ensures LangChain compatibility
+3. **LangChain Standard Tests** (`tests/integration_tests/test_standard.py`)
+   - Inherit from `RetrieversIntegrationTests` (from `langchain_tests.integration_tests`)
+   - Ensures LangChain compatibility and compliance
+   - Tests standard retriever behavior: sync/async invoke, k parameter, Document returns
+   - Use `pytest.mark.xfail` to skip tests for unsupported features
 
 ---
 
