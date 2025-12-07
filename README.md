@@ -13,34 +13,29 @@ And you should configure credentials by setting the following environment variab
 ```bash
 export NIMBLE_API_KEY=<PLACEHOLDER_FOR_YOUR_NIMBLE_API_KEY>
 ```
-You can get your API key from [Nimble's website](https://nimbleway.com/)
-Just, go to the log-in page and sign up for a new account. After that, you can get your API key from the dashboard.
+You can get your API key from [Nimble's website](https://nimbleway.com/).
+Just go to the log-in page and sign up for a new account. After that, you can get your API key from the dashboard.
 
 ## Retrievers
 
 ### Search Retriever
-`NimbleSearchRetriever` retrieves search results from Google, Bing, and Yandex.
+`NimbleSearchRetriever` retrieves search results with full page content extraction. Supports general, news, and location topics.
 
 ```python
 from langchain_nimble import NimbleSearchRetriever
 
-retriever = NimbleSearchRetriever(num_results=5, deep_search=True)
-await retriever.ainvoke("Nimbleway")
+retriever = NimbleSearchRetriever(num_results=3, topic="general")
+documents = await retriever.ainvoke("latest LangChain release")
 ```
 
 ### Extract Retriever
-`NimbleExtractRetriever` extracts content from specific URLs.
+`NimbleExtractRetriever` extracts clean content from a single URL and returns one document.
 
 ```python
 from langchain_nimble import NimbleExtractRetriever
 
-retriever = NimbleExtractRetriever(
-    links=[
-        "https://example.com/page1",
-        "https://example.com/page2"
-    ]
-)
-await retriever.ainvoke("query")
+retriever = NimbleExtractRetriever()
+document = await retriever.ainvoke("https://www.langchain.com")
 ```
 
 For the full reference with examples please see [our documentation](https://github.com/Nimbleway/langchain-nimble/blob/main/docs/nimbleway.ipynb).

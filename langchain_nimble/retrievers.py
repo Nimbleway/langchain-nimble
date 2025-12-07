@@ -112,10 +112,8 @@ class _NimbleBaseRetriever(BaseRetriever):
 class NimbleSearchRetriever(_NimbleBaseRetriever):
     """Search retriever for Nimble API.
 
-    Retrieves search results from Google, Bing, and Yandex.
-
-    All search parameters from SearchParams are supported as top-level fields.
-    See SearchParams for detailed parameter documentation.
+    Retrieves search results with full page content extraction.
+    Supports general, news, and location topics.
 
     Args:
         api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
@@ -146,9 +144,9 @@ class NimbleSearchRetriever(_NimbleBaseRetriever):
         return "/search"
 
     def _build_request_body(self, query: str, **kwargs: Any) -> dict[str, Any]:
-        params = SearchParams(
+        return SearchParams(
             query=query,
-            num_results=kwargs.get("k", self.num_results),
+            num_results=kwargs.get("num_results", kwargs.get("k", self.num_results)),
             locale=kwargs.get("locale", self.locale),
             country=kwargs.get("country", self.country),
             parsing_type=kwargs.get("parsing_type", self.parsing_type),
@@ -159,50 +157,40 @@ class NimbleSearchRetriever(_NimbleBaseRetriever):
             exclude_domains=self.exclude_domains,
             start_date=self.start_date,
             end_date=self.end_date,
-        )
-        return {k: v for k, v in params.model_dump().items() if v is not None}
+        ).model_dump(exclude_none=True)
 
 
 class NimbleExtractRetriever(_NimbleBaseRetriever):
     """Extract retriever for Nimble API.
 
-    Extracts content from specific URLs.
+    Extracts content from a single URL passed via the query parameter.
 
     Args:
         api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
         base_url: Base URL for API (defaults to production endpoint).
-        links: List of URLs to extract (1-20 URLs, required).
         locale: Locale for results (default: en).
         country: Country code (default: US).
         parsing_type: Content format - plain_text, markdown, simplified_html.
         driver: Browser driver to use (default: vx6).
         wait: Optional delay in milliseconds for render flow.
+
+    Example:
+        >>> retriever = NimbleExtractRetriever()
+        >>> docs = await retriever.ainvoke("https://example.com")
     """
 
-    links: list[str]
     driver: str = "vx6"
     wait: int | None = None
-
-    @model_validator(mode="after")
-    def validate_links(self) -> "NimbleExtractRetriever":
-        """Validate links parameter."""
-        if not self.links:
-            msg = "At least one URL required in links parameter."
-            raise ValueError(msg)
-        return self
 
     def _get_endpoint(self) -> str:
         return "/extract"
 
     def _build_request_body(self, query: str, **kwargs: Any) -> dict[str, Any]:
-        params = ExtractParams(
-            links=kwargs.get("links", self.links),
+        return ExtractParams(
+            links=[query],
             locale=kwargs.get("locale", self.locale),
             country=kwargs.get("country", self.country),
             parsing_type=kwargs.get("parsing_type", self.parsing_type),
             driver=kwargs.get("driver", self.driver),
             wait=self.wait,
-        )
-        body = params.model_dump(exclude_none=True)
-        body["query"] = query
-        return body
+        ).model_dump(exclude_none=True)
