@@ -2,7 +2,7 @@
 
 from importlib import metadata
 
-from langchain_nimble.retrievers import NimbleSearchRetriever
+from langchain_nimble.retrievers import NimbleExtractRetriever, NimbleSearchRetriever
 
 try:
     __version__ = metadata.version(__package__)
@@ -12,6 +12,7 @@ except metadata.PackageNotFoundError:
 del metadata  # optional, avoids polluting the results of dir(__package__)
 
 __all__ = [
+    "NimbleExtractRetriever",
     "NimbleSearchRetriever",
     "__version__",
 ]
