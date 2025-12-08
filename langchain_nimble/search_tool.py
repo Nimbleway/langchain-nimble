@@ -2,13 +2,11 @@
 
 from typing import Any
 
-import httpx
 from langchain_core.tools import BaseTool
-from langchain_core.utils import from_env, secret_from_env
-from pydantic import BaseModel, Field, SecretStr, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from ._types import SearchParams
-from ._utilities import create_async_client, create_sync_client, handle_api_errors
+from ._utilities import _NimbleClientMixin, handle_api_errors
 
 
 class NimbleSearchToolInput(BaseModel):
@@ -169,7 +167,7 @@ class NimbleSearchToolInput(BaseModel):
         return self
 
 
-class NimbleSearchTool(BaseTool):
+class NimbleSearchTool(_NimbleClientMixin, BaseTool):
     """Search the web using Nimble's Search API.
 
     This tool provides web search capabilities with optional deep content extraction.
@@ -198,48 +196,6 @@ class NimbleSearchTool(BaseTool):
         "research, fact-checking, finding sources, or gathering information."
     )
     args_schema: type[BaseModel] = NimbleSearchToolInput
-
-    nimble_api_key: SecretStr = Field(
-        alias="api_key",
-        default_factory=secret_from_env("NIMBLE_API_KEY", default=""),
-    )
-    nimble_api_url: str | None = Field(
-        alias="base_url",
-        default_factory=from_env(
-            "NIMBLE_API_URL",
-            default="https://nimble-retriever.webit.live",
-        ),
-    )
-    max_retries: int = Field(
-        default=2,
-        ge=0,
-        le=5,
-        description="Maximum retry attempts for 5xx errors (0 disables retries)",
-    )
-
-    locale: str = "en"
-    country: str = "US"
-    parsing_type: str = "markdown"
-
-    _sync_client: httpx.Client | None = None
-    _async_client: httpx.AsyncClient | None = None
-
-    @model_validator(mode="after")
-    def initialize_clients(self) -> "NimbleSearchTool":
-        """Initialize HTTP clients."""
-        api_key = self.nimble_api_key.get_secret_value()
-        if not api_key:
-            msg = "API key required. Set NIMBLE_API_KEY or pass api_key parameter."
-            raise ValueError(msg)
-
-        base_url = self.nimble_api_url or "https://nimble-retriever.webit.live"
-        self._sync_client = create_sync_client(
-            api_key=api_key, base_url=base_url, max_retries=self.max_retries
-        )
-        self._async_client = create_async_client(
-            api_key=api_key, base_url=base_url, max_retries=self.max_retries
-        )
-        return self
 
     def _build_request_body(
         self,

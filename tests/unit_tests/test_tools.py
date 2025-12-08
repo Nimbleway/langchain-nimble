@@ -26,7 +26,7 @@ def test_nimble_search_tool_missing_api_key() -> None:
         NimbleSearchTool()
 
 
-@patch("langchain_nimble.search_tool.create_sync_client")
+@patch("langchain_nimble._utilities.create_sync_client")
 def test_nimble_search_tool_run_basic(mock_create_client: MagicMock) -> None:
     """Test basic synchronous search."""
     # Mock the client and response
@@ -59,7 +59,7 @@ def test_nimble_search_tool_run_basic(mock_create_client: MagicMock) -> None:
     mock_client.post.assert_called_once()
 
 
-@patch("langchain_nimble.search_tool.create_async_client")
+@patch("langchain_nimble._utilities.create_async_client")
 async def test_nimble_search_tool_arun_basic(mock_create_client: MagicMock) -> None:
     """Test basic asynchronous search."""
     # Mock the async client and response
@@ -96,7 +96,7 @@ async def test_nimble_search_tool_arun_basic(mock_create_client: MagicMock) -> N
     assert "body" in result
 
 
-@patch("langchain_nimble.search_tool.create_sync_client")
+@patch("langchain_nimble._utilities.create_sync_client")
 def test_nimble_search_tool_run_with_options(mock_create_client: MagicMock) -> None:
     """Test synchronous search with all options."""
     # Mock the client and response
@@ -138,7 +138,7 @@ def test_nimble_search_tool_run_with_options(mock_create_client: MagicMock) -> N
     assert request_body["end_date"] == "2024-12-31"
 
 
-@patch("langchain_nimble.search_tool.create_sync_client")
+@patch("langchain_nimble._utilities.create_sync_client")
 def test_nimble_search_tool_invoke(mock_create_client: MagicMock) -> None:
     """Test tool invoke method."""
     # Mock the client and response
@@ -159,7 +159,7 @@ def test_nimble_search_tool_invoke(mock_create_client: MagicMock) -> None:
     mock_client.post.assert_called_once()
 
 
-@patch("langchain_nimble.search_tool.create_async_client")
+@patch("langchain_nimble._utilities.create_async_client")
 async def test_nimble_search_tool_ainvoke(mock_create_client: MagicMock) -> None:
     """Test tool async invoke method."""
     # Mock the async client and response
