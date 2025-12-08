@@ -157,6 +157,17 @@ class NimbleSearchToolInput(BaseModel):
         """,
     )
 
+    @model_validator(mode="after")
+    def validate_deep_search_and_include_answer(self) -> "NimbleSearchToolInput":
+        """Validate that deep_search and include_answer are mutually exclusive."""
+        if self.deep_search and self.include_answer:
+            msg = (
+                "deep_search and include_answer cannot both be True. "
+                "include_answer is only available when deep_search=False."
+            )
+            raise ValueError(msg)
+        return self
+
 
 class NimbleSearchTool(BaseTool):
     """Search the web using Nimble's Search API.

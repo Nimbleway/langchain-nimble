@@ -200,6 +200,10 @@ def test_nimble_search_tool_input_validation() -> None:
     with pytest.raises(Exception):  # Pydantic validation error
         NimbleSearchToolInput(query="test", num_results=101)
 
+    # Test mutually exclusive deep_search and include_answer
+    with pytest.raises(ValueError, match="deep_search and include_answer cannot both"):
+        NimbleSearchToolInput(query="test", deep_search=True, include_answer=True)
+
 
 @pytest.mark.benchmark
 def test_nimble_search_tool_init_time(benchmark):  # type: ignore[no-untyped-def]
