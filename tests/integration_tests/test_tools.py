@@ -1,4 +1,4 @@
-"""Integration tests for Nimble Search tool (async mode only).
+"""Integration tests for Nimble tools (search and extract).
 
 Requires NIMBLE_API_KEY environment variable.
 """
@@ -7,7 +7,7 @@ import os
 
 import pytest
 
-from langchain_nimble import NimbleSearchTool
+from langchain_nimble import NimbleExtractTool, NimbleSearchTool
 
 
 @pytest.fixture
@@ -120,3 +120,24 @@ async def test_nimble_search_sync_invoke(api_key: str) -> None:
     assert "body" in result
     assert len(result["body"]) > 0
     assert len(result["body"]) <= 2
+
+
+# ============================================================================
+# NimbleExtractTool Integration Tests
+# ============================================================================
+
+
+async def test_nimble_extract_async_single_url(api_key: str) -> None:
+    """Test async content extraction from a single URL."""
+    tool = NimbleExtractTool(api_key=api_key)
+
+    result = await tool.ainvoke({"urls": ["https://example.com"]})
+
+    assert result is not None
+    assert "body" in result
+    assert len(result["body"]) > 0
+
+    first_result = result["body"][0]
+    assert "page_content" in first_result
+    assert len(first_result["page_content"]) > 0
+    assert "metadata" in first_result
