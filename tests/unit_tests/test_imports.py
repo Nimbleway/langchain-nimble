@@ -3,8 +3,9 @@
 from langchain_nimble import __all__
 
 EXPECTED_ALL = [
-    "NimbleSearchRetriever",
     "NimbleExtractRetriever",
+    "NimbleSearchRetriever",
+    "NimbleSearchTool",
     "__version__",
 ]
 

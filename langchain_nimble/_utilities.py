@@ -10,6 +10,57 @@ from functools import lru_cache
 from typing import Any
 
 import httpx
+from langchain_core.utils import from_env, secret_from_env
+from pydantic import BaseModel, Field, SecretStr, model_validator
+
+
+class _NimbleClientMixin(BaseModel):
+    """Mixin providing Nimble API client configuration and initialization.
+
+    This mixin is shared by both retrievers and tools to avoid code duplication
+    for client configuration and initialization logic.
+    """
+
+    nimble_api_key: SecretStr = Field(
+        alias="api_key",
+        default_factory=secret_from_env("NIMBLE_API_KEY", default=""),
+    )
+    nimble_api_url: str = Field(
+        alias="base_url",
+        default_factory=from_env(
+            "NIMBLE_API_URL",
+            default="https://nimble-retriever.webit.live",
+        ),
+    )
+    max_retries: int = Field(
+        default=2,
+        ge=0,
+        le=5,
+        description="Maximum retry attempts for 5xx errors (0 disables retries)",
+    )
+
+    locale: str = "en"
+    country: str = "US"
+    parsing_type: str = "markdown"
+
+    _sync_client: httpx.Client | None = None
+    _async_client: httpx.AsyncClient | None = None
+
+    @model_validator(mode="after")
+    def initialize_clients(self) -> _NimbleClientMixin:
+        """Initialize HTTP clients."""
+        api_key = self.nimble_api_key.get_secret_value()
+        if not api_key:
+            msg = "API key required. Set NIMBLE_API_KEY or pass api_key parameter."
+            raise ValueError(msg)
+
+        self._sync_client = create_sync_client(
+            api_key=api_key, base_url=self.nimble_api_url, max_retries=self.max_retries
+        )
+        self._async_client = create_async_client(
+            api_key=api_key, base_url=self.nimble_api_url, max_retries=self.max_retries
+        )
+        return self
 
 
 class _SyncHttpxClientWrapper(httpx.Client):
@@ -135,7 +186,6 @@ def create_sync_client(
     )
 
 
-@lru_cache
 def create_async_client(
     *,
     api_key: str,
@@ -143,7 +193,16 @@ def create_async_client(
     timeout: float | httpx.Timeout = 100.0,
     max_retries: int = 2,
 ) -> _AsyncHttpxClientWrapper:
-    """Create cached async HTTP client with connection pooling and retry logic."""
+    """Create async HTTP client with connection pooling and retry logic.
+
+    Not cached because AsyncClient's connection pool is bound to a specific
+    event loop. With pytest-asyncio creating new loops per test, caching
+    causes "Event loop is closed" errors when pooled connections from old
+    loops are reused.
+
+    Each instance still benefits from connection pooling within its own client.
+    See: https://github.com/encode/httpx/discussions/2959
+    """
     transport = (
         _AsyncRetryTransport(max_retries=max_retries) if max_retries > 0 else None
     )

@@ -3,64 +3,20 @@
 from abc import abstractmethod
 from typing import Any
 
-import httpx
 from langchain_core.callbacks.manager import (
     AsyncCallbackManagerForRetrieverRun,
     CallbackManagerForRetrieverRun,
 )
 from langchain_core.documents.base import Document
 from langchain_core.retrievers import BaseRetriever
-from langchain_core.utils import from_env, secret_from_env
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field
 
 from ._types import ExtractParams, SearchParams
-from ._utilities import create_async_client, create_sync_client, handle_api_errors
+from ._utilities import _NimbleClientMixin, handle_api_errors
 
 
-class _NimbleBaseRetriever(BaseRetriever):
+class _NimbleBaseRetriever(_NimbleClientMixin, BaseRetriever):
     """Base retriever with shared API client logic."""
-
-    nimble_api_key: SecretStr = Field(
-        alias="api_key",
-        default_factory=secret_from_env("NIMBLE_API_KEY", default=""),
-    )
-    nimble_api_url: str | None = Field(
-        alias="base_url",
-        default_factory=from_env(
-            "NIMBLE_API_URL",
-            default="https://nimble-retriever.webit.live",
-        ),
-    )
-    max_retries: int = Field(
-        default=2,
-        ge=0,
-        le=5,
-        description="Maximum retry attempts for 5xx errors (0 disables retries)",
-    )
-
-    locale: str = "en"
-    country: str = "US"
-    parsing_type: str = "plain_text"
-
-    _sync_client: httpx.Client | None = None
-    _async_client: httpx.AsyncClient | None = None
-
-    @model_validator(mode="after")
-    def initialize_clients(self) -> "_NimbleBaseRetriever":
-        """Initialize HTTP clients."""
-        api_key = self.nimble_api_key.get_secret_value()
-        if not api_key:
-            msg = "API key required. Set NIMBLE_API_KEY or pass api_key parameter."
-            raise ValueError(msg)
-
-        base_url = self.nimble_api_url or "https://nimble-retriever.webit.live"
-        self._sync_client = create_sync_client(
-            api_key=api_key, base_url=base_url, max_retries=self.max_retries
-        )
-        self._async_client = create_async_client(
-            api_key=api_key, base_url=base_url, max_retries=self.max_retries
-        )
-        return self
 
     @abstractmethod
     def _build_request_body(self, query: str, **kwargs: Any) -> dict[str, Any]:
@@ -140,7 +96,7 @@ class NimbleSearchRetriever(_NimbleBaseRetriever):
         end_date: Filter results before date (YYYY-MM-DD or YYYY).
         locale: Locale for results (default: en).
         country: Country code (default: US).
-        parsing_type: Content format - plain_text, markdown, simplified_html.
+        parsing_type: Content format - plain_text, markdown (default), simplified_html.
     """
 
     num_results: int = Field(default=3, ge=1, le=100, alias="k")
@@ -182,7 +138,7 @@ class NimbleExtractRetriever(_NimbleBaseRetriever):
         base_url: Base URL for API (defaults to production endpoint).
         locale: Locale for results (default: en).
         country: Country code (default: US).
-        parsing_type: Content format - plain_text, markdown, simplified_html.
+        parsing_type: Content format - plain_text, markdown (default), simplified_html.
         driver: Browser driver to use (default: vx6).
         wait: Optional delay in milliseconds for render flow.
 
