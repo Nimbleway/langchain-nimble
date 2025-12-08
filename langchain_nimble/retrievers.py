@@ -40,7 +40,7 @@ class _NimbleBaseRetriever(BaseRetriever):
 
     locale: str = "en"
     country: str = "US"
-    parsing_type: str = "plain_text"
+    parsing_type: str = "markdown"
 
     _sync_client: httpx.Client | None = None
     _async_client: httpx.AsyncClient | None = None
@@ -140,7 +140,7 @@ class NimbleSearchRetriever(_NimbleBaseRetriever):
         end_date: Filter results before date (YYYY-MM-DD or YYYY).
         locale: Locale for results (default: en).
         country: Country code (default: US).
-        parsing_type: Content format - plain_text, markdown, simplified_html.
+        parsing_type: Content format - plain_text, markdown (default), simplified_html.
     """
 
     num_results: int = Field(default=3, ge=1, le=100, alias="k")
@@ -182,7 +182,7 @@ class NimbleExtractRetriever(_NimbleBaseRetriever):
         base_url: Base URL for API (defaults to production endpoint).
         locale: Locale for results (default: en).
         country: Country code (default: US).
-        parsing_type: Content format - plain_text, markdown, simplified_html.
+        parsing_type: Content format - plain_text, markdown (default), simplified_html.
         driver: Browser driver to use (default: vx6).
         wait: Optional delay in milliseconds for render flow.
 

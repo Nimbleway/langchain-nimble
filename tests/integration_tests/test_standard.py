@@ -1,7 +1,7 @@
-"""Standard integration tests for Nimble retrievers.
+"""Standard integration tests for Nimble retrievers and tools.
 
 These tests use the langchain-tests framework to ensure compliance with
-LangChain standards for retrievers.
+LangChain standards for retrievers and tools.
 
 Requires NIMBLE_API_KEY environment variable.
 """
@@ -10,9 +10,17 @@ import os
 
 import pytest
 from langchain_core.retrievers import BaseRetriever
-from langchain_tests.integration_tests import RetrieversIntegrationTests
+from langchain_core.tools import BaseTool
+from langchain_tests.integration_tests import (
+    RetrieversIntegrationTests,
+    ToolsIntegrationTests,
+)
 
-from langchain_nimble import NimbleExtractRetriever, NimbleSearchRetriever
+from langchain_nimble import (
+    NimbleExtractRetriever,
+    NimbleSearchRetriever,
+    NimbleSearchTool,
+)
 
 
 def _get_api_key() -> str:
@@ -125,3 +133,22 @@ class TestNimbleExtractRetrieverStandard(RetrieversIntegrationTests):
     def test_invoke_with_k_kwarg(self, retriever: BaseRetriever) -> None:
         """Not supported - extract always returns one document."""
         raise NotImplementedError
+
+
+class TestNimbleSearchToolStandard(ToolsIntegrationTests):
+    """Standard integration tests for NimbleSearchTool."""
+
+    @property
+    def tool_constructor(self) -> type[BaseTool]:
+        """Tool class to test."""
+        return NimbleSearchTool
+
+    @property
+    def tool_constructor_params(self) -> dict:
+        """Constructor parameters."""
+        return {"api_key": _get_api_key()}
+
+    @property
+    def tool_invoke_params_example(self) -> dict:
+        """Example invocation parameters."""
+        return {"query": "LangChain framework", "num_results": 3}

@@ -135,7 +135,6 @@ def create_sync_client(
     )
 
 
-@lru_cache
 def create_async_client(
     *,
     api_key: str,
@@ -143,7 +142,16 @@ def create_async_client(
     timeout: float | httpx.Timeout = 100.0,
     max_retries: int = 2,
 ) -> _AsyncHttpxClientWrapper:
-    """Create cached async HTTP client with connection pooling and retry logic."""
+    """Create async HTTP client with connection pooling and retry logic.
+
+    Not cached because AsyncClient's connection pool is bound to a specific
+    event loop. With pytest-asyncio creating new loops per test, caching
+    causes "Event loop is closed" errors when pooled connections from old
+    loops are reused.
+
+    Each instance still benefits from connection pooling within its own client.
+    See: https://github.com/encode/httpx/discussions/2959
+    """
     transport = (
         _AsyncRetryTransport(max_retries=max_retries) if max_retries > 0 else None
     )
