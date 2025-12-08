@@ -117,8 +117,10 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
         locale: Locale for results (default: en).
         country: Country code (default: US).
         parsing_type: Content format - plain_text, markdown (default), simplified_html.
-        driver: Browser driver for extraction (default: vx6).
-        wait: Optional render delay in milliseconds (default: None).
+
+    Note:
+        driver and wait parameters are configured per-request via tool input,
+        not at tool initialization.
     """
 
     name: str = "nimble_extract_content"
@@ -128,9 +130,6 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
         "extract, or after using search to find relevant pages."
     )
     args_schema: type[BaseModel] = NimbleExtractToolInput
-
-    driver: str = "vx6"
-    wait: int | None = None
 
     def _build_request_body(
         self,
