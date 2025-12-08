@@ -1,3 +1,5 @@
+"""Script to verify that all Python files can be imported successfully."""
+
 import sys
 import traceback
 from importlib.machinery import SourceFileLoader

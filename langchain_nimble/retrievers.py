@@ -1,88 +1,68 @@
-import os
-from enum import Enum
-from typing import List, Any
+"""Nimble Search API retriever implementations."""
 
-import requests
-from langchain_core.callbacks.manager import CallbackManagerForRetrieverRun
+from abc import abstractmethod
+from typing import Any
+
+from langchain_core.callbacks.manager import (
+    AsyncCallbackManagerForRetrieverRun,
+    CallbackManagerForRetrieverRun,
+)
 from langchain_core.documents.base import Document
 from langchain_core.retrievers import BaseRetriever
+from pydantic import Field
+
+from ._types import ExtractParams, SearchParams
+from ._utilities import _NimbleClientMixin, handle_api_errors
 
 
-class SearchEngine(str, Enum):
-    """
-    Enum representing the search engines supported by Nimble
-    """
+class _NimbleBaseRetriever(_NimbleClientMixin, BaseRetriever):
+    """Base retriever with shared API client logic."""
 
-    GOOGLE = "google_search"
-    GOOGLE_SGE = "google_sge"
-    BING = "bing_search"
-    YANDEX = "yandex_search"
+    @abstractmethod
+    def _build_request_body(self, query: str, **kwargs: Any) -> dict[str, Any]:
+        """Build API request body."""
+        ...
 
-
-class ParsingType(str, Enum):
-    """
-    Enum representing the parsing types supported by Nimble
-    """
-
-    PLAIN_TEXT = "plain_text"
-    MARKDOWN = "markdown"
-    SIMPLIFIED_HTML = "simplified_html"
-
-
-class NimbleSearchRetriever(BaseRetriever):
-    """Nimbleway Search API retriever.
-    Allows you to retrieve search results from Google, Bing, and Yandex.
-    Visit https://www.nimbleway.com/ and sign up to receive
-     an API key and to see more info.
-
-    Args:
-        api_key: The API key for Nimbleway.
-        search_engine: The search engine to use. Default is Google.
-        render: Whether to render the results web sites. Default is True.
-        locale: The locale to use. Default is "en".
-        country: The country to use. Default is "US".
-        parsing_type: The parsing type to use. Default is "plain_text".
-        links: The list of links to search for. Default is None. (if enabled will
-        ignore the query)
-    """
-
-    api_key: str = None
-    k: int = 3
-    search_engine: SearchEngine = SearchEngine.GOOGLE
-    render: bool = False
-    locale: str = "en"
-    country: str = "US"
-    parsing_type: ParsingType = ParsingType.PLAIN_TEXT
-    links: List[str] = []
+    @abstractmethod
+    def _get_endpoint(self) -> str:
+        """Return API endpoint path."""
+        ...
 
     def _get_relevant_documents(
-            self, query: str, *, run_manager: CallbackManagerForRetrieverRun,
-            **kwargs: Any
-    ) -> List[Document]:
-        request_body = {
-            "query": query,
-            "num_results": kwargs.get("k", self.k),
-            "search_engine": kwargs.get("search_engine",
-                                        self.search_engine).value,
-            "render": kwargs.get("render", self.render),
-            "locale": kwargs.get("locale", self.locale),
-            "country": kwargs.get("country", self.country),
-            "parsing_type": kwargs.get("parsing_type",
-                                       self.parsing_type).value,
-            "links": kwargs.get("links", self.links)
-        }
-        route = "extract" if self.links else "search"
-        response = requests.post(
-            f"https://nimble-retriever.webit.live/{route}",
-            json=request_body,
-            headers={
-                "Authorization": f"Basic {self.api_key or os.getenv('NIMBLE_API_KEY')}",
-                "Content-Type": "application/json",
-            },
-        )
-        response.raise_for_status()
-        raw_json_content = response.json()
-        docs = [
+        self, query: str, *, run_manager: CallbackManagerForRetrieverRun, **kwargs: Any
+    ) -> list[Document]:
+        if self._sync_client is None:
+            msg = "Sync client not initialized"
+            raise RuntimeError(msg)
+
+        with handle_api_errors(operation=f"{self._get_endpoint()} request"):
+            response = self._sync_client.post(
+                self._get_endpoint(), json=self._build_request_body(query, **kwargs)
+            )
+            response.raise_for_status()
+            return self._parse_response(response.json())
+
+    async def _aget_relevant_documents(
+        self,
+        query: str,
+        *,
+        run_manager: AsyncCallbackManagerForRetrieverRun,
+        **kwargs: Any,
+    ) -> list[Document]:
+        if self._async_client is None:
+            msg = "Async client not initialized"
+            raise RuntimeError(msg)
+
+        with handle_api_errors(operation=f"{self._get_endpoint()} request"):
+            response = await self._async_client.post(
+                self._get_endpoint(), json=self._build_request_body(query, **kwargs)
+            )
+            response.raise_for_status()
+            return self._parse_response(response.json())
+
+    def _parse_response(self, raw_json_content: dict[str, Any]) -> list[Document]:
+        """Parse API response into Documents."""
+        return [
             Document(
                 page_content=doc.get("page_content", ""),
                 metadata={
@@ -90,10 +70,95 @@ class NimbleSearchRetriever(BaseRetriever):
                     "snippet": doc.get("metadata", {}).get("snippet", ""),
                     "url": doc.get("metadata", {}).get("url", ""),
                     "position": doc.get("metadata", {}).get("position", -1),
-                    "entity_type": doc.get("metadata", {}).get("entity_type",
-                                                               ""),
+                    "entity_type": doc.get("metadata", {}).get("entity_type", ""),
                 },
             )
             for doc in raw_json_content.get("body", [])
         ]
-        return docs
+
+
+class NimbleSearchRetriever(_NimbleBaseRetriever):
+    """Search retriever for Nimble API.
+
+    Retrieves search results with full page content extraction.
+    Supports general, news, and location topics.
+
+    Args:
+        api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
+        base_url: Base URL for API (defaults to production endpoint).
+        num_results: Number of results to return (1-100, default: 3). Alias: k.
+        topic: Search topic - general, news, or location (default: general).
+        deep_search: Fetch full page content (default: True).
+        include_answer: Generate LLM answer (only with deep_search=False).
+        include_domains: Whitelist of domains to include.
+        exclude_domains: Blacklist of domains to exclude.
+        start_date: Filter results after date (YYYY-MM-DD or YYYY).
+        end_date: Filter results before date (YYYY-MM-DD or YYYY).
+        locale: Locale for results (default: en).
+        country: Country code (default: US).
+        parsing_type: Content format - plain_text, markdown (default), simplified_html.
+    """
+
+    num_results: int = Field(default=3, ge=1, le=100, alias="k")
+    topic: str = "general"
+    deep_search: bool = True
+    include_answer: bool = False
+    include_domains: list[str] | None = None
+    exclude_domains: list[str] | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+
+    def _get_endpoint(self) -> str:
+        return "/search"
+
+    def _build_request_body(self, query: str, **kwargs: Any) -> dict[str, Any]:
+        return SearchParams(
+            query=query,
+            num_results=kwargs.get("num_results", kwargs.get("k", self.num_results)),
+            locale=kwargs.get("locale", self.locale),
+            country=kwargs.get("country", self.country),
+            parsing_type=kwargs.get("parsing_type", self.parsing_type),
+            topic=kwargs.get("topic", self.topic),
+            deep_search=kwargs.get("deep_search", self.deep_search),
+            include_answer=kwargs.get("include_answer", self.include_answer),
+            include_domains=self.include_domains,
+            exclude_domains=self.exclude_domains,
+            start_date=self.start_date,
+            end_date=self.end_date,
+        ).model_dump(exclude_none=True)
+
+
+class NimbleExtractRetriever(_NimbleBaseRetriever):
+    """Extract retriever for Nimble API.
+
+    Extracts content from a single URL passed via the query parameter.
+
+    Args:
+        api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
+        base_url: Base URL for API (defaults to production endpoint).
+        locale: Locale for results (default: en).
+        country: Country code (default: US).
+        parsing_type: Content format - plain_text, markdown (default), simplified_html.
+        driver: Browser driver to use (default: vx6).
+        wait: Optional delay in milliseconds for render flow.
+
+    Example:
+        >>> retriever = NimbleExtractRetriever()
+        >>> docs = await retriever.ainvoke("https://example.com")
+    """
+
+    driver: str = "vx6"
+    wait: int | None = None
+
+    def _get_endpoint(self) -> str:
+        return "/extract"
+
+    def _build_request_body(self, query: str, **kwargs: Any) -> dict[str, Any]:
+        return ExtractParams(
+            links=[query],
+            locale=kwargs.get("locale", self.locale),
+            country=kwargs.get("country", self.country),
+            parsing_type=kwargs.get("parsing_type", self.parsing_type),
+            driver=kwargs.get("driver", self.driver),
+            wait=self.wait,
+        ).model_dump(exclude_none=True)
