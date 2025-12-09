@@ -15,13 +15,14 @@ Run:
     python examples/web_search_agent.py
 
     # Run with a custom question
-    python examples/web_search_agent.py "What are the latest trends in machine learning?"
+    python examples/web_search_agent.py "What are the latest AI trends?"
 """
 
 import argparse
 import asyncio
 import os
 import time
+from typing import Any
 
 from dotenv import load_dotenv
 from langchain.agents import create_agent
@@ -59,7 +60,7 @@ async def main() -> None:
 
     # Create agent with system prompt and both tools
     # Using Claude Haiku 4.5 for fast, cost-effective performance
-    agent = create_agent(
+    agent: Any = create_agent(
         model="claude-haiku-4-5",
         tools=[search_tool, extract_tool],
         system_prompt=(
