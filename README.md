@@ -10,15 +10,15 @@ langchain-nimble provides powerful web search and content extraction capabilitie
 
 ## Features
 
-✨ **Dual Interface**: Retrievers for chains, Tools for agents
-🔍 **Deep Search Mode**: Full page content extraction, not just snippets
-🤖 **LLM Answers**: Optional AI-generated answer summaries
-🎯 **Topic Routing**: Specialized search for general, news, or location queries
-📅 **Temporal Filtering**: Search by date ranges
-🌐 **Domain Control**: Include/exclude specific domains
-⚡ **Full Async Support**: Both sync and async implementations
-🔄 **Smart Retry Logic**: Automatic retry with exponential backoff
-📊 **Multiple Formats**: Plain text, Markdown, or HTML output
+- ✨ **Dual Interface**: Retrievers for chains, Tools for agents
+- 🔍 **Deep Search Mode**: Full page content extraction, not just snippets
+- 🤖 **LLM Answers**: Optional AI-generated answer summaries
+- 🎯 **Topic Routing**: Specialized search for general, news, or location queries
+- 📅 **Temporal Filtering**: Search by date ranges
+- 🌐 **Domain Control**: Include/exclude specific domains
+- ⚡ **Full Async Support**: Both sync and async implementations
+- 🔄 **Smart Retry Logic**: Automatic retry with exponential backoff
+- 📊 **Multiple Formats**: Plain text, Markdown, or HTML output
 
 ## Installation
 
