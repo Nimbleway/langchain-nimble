@@ -11,11 +11,18 @@ Environment:
     export ANTHROPIC_API_KEY="your-anthropic-api-key"
 
 Run:
+    # Run with sample queries
     python examples/web_search_agent.py
+
+    # Run with a custom question
+    python examples/web_search_agent.py "What are the latest AI trends?"
 """
 
+import argparse
 import asyncio
 import os
+import time
+from typing import Any
 
 from dotenv import load_dotenv
 from langchain.agents import create_agent
@@ -28,6 +35,20 @@ load_dotenv()
 
 async def main() -> None:
     """Run an async multi-tool web agent."""
+    # Start timing
+    start_time = time.time()
+
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(
+        description="Run a web search agent with a custom question or sample queries"
+    )
+    parser.add_argument(
+        "question",
+        nargs="?",
+        help="A single question to ask the agent (optional)",
+    )
+    args = parser.parse_args()
+
     # Check for required API keys
     if not os.environ.get("NIMBLE_API_KEY"):
         msg = "NIMBLE_API_KEY environment variable is required"
@@ -39,7 +60,7 @@ async def main() -> None:
 
     # Create agent with system prompt and both tools
     # Using Claude Haiku 4.5 for fast, cost-effective performance
-    agent = create_agent(
+    agent: Any = create_agent(
         model="claude-haiku-4-5",
         tools=[search_tool, extract_tool],
         system_prompt=(
@@ -52,18 +73,22 @@ async def main() -> None:
         ),
     )
 
-    # Example queries demonstrating both tools
-    queries = [
-        "What are the latest developments in artificial intelligence?",
-        (
-            "Find the official Python 3.13 release notes and summarize "
-            "the key new features"
-        ),
-        (
-            "Search for the LangChain documentation and extract the main "
-            "concepts from the homepage"
-        ),
-    ]
+    # Use custom question if provided, otherwise use sample queries
+    if args.question:
+        queries = [args.question]
+    else:
+        # Example queries demonstrating both tools
+        queries = [
+            "What are the latest developments in artificial intelligence?",
+            (
+                "Find the official Python 3.13 release notes and summarize "
+                "the key new features"
+            ),
+            (
+                "Search for the LangChain documentation and extract the main "
+                "concepts from the homepage"
+            ),
+        ]
 
     print("=" * 80)
     print("Multi-Tool Web Agent Example (Search + Extract)")
@@ -83,6 +108,12 @@ async def main() -> None:
         final_message = response["messages"][-1]
         print(f"\n🤖 Answer:\n{final_message.content}")
         print("-" * 80)
+
+    # Print total execution time
+    elapsed_time = time.time() - start_time
+    print(f"\n\n{'=' * 80}")
+    print(f"Total execution time: {elapsed_time:.2f} seconds")
+    print(f"{'=' * 80}")
 
 
 if __name__ == "__main__":
