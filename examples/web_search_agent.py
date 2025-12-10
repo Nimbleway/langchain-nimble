@@ -99,14 +99,13 @@ async def main() -> None:
         print(f"\n\n📝 Query: {query}")
         print("-" * 80)
 
-        # Invoke the agent asynchronously
-        response = await agent.ainvoke(
-            {"messages": [{"role": "user", "content": query}]}
-        )
+        # Stream the agent's response for real-time output
+        async for step in agent.astream(
+            {"messages": [{"role": "user", "content": query}]},
+            stream_mode="values",
+        ):
+            step["messages"][-1].pretty_print()
 
-        # Extract and print the final answer
-        final_message = response["messages"][-1]
-        print(f"\n🤖 Answer:\n{final_message.content}")
         print("-" * 80)
 
     # Print total execution time
