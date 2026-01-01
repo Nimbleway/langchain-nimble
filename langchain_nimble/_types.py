@@ -24,6 +24,18 @@ class OutputFormat(str, Enum):
     SIMPLIFIED_HTML = "simplified_html"
 
 
+class BrowserlessDriver(str, Enum):
+    """Browserless drivers available for web extraction."""
+
+    VX6 = "vx6"
+    VX8 = "vx8"
+    VX8_PRO = "vx8-pro"
+    VX10 = "vx10"
+    VX10_PRO = "vx10-pro"
+    VX12 = "vx12"
+    VX12_PRO = "vx12-pro"
+
+
 class BaseParams(BaseModel):
     """Base parameters shared by search and extract endpoints."""
 
@@ -71,7 +83,7 @@ class SearchParams(BaseParams):
         default=True,
         description=(
             "Enable deep search to fetch full page content. "
-            "When False, returns only metadata (title, snippet, URL)."
+            "When False, returns only metadata (title, description, URL)."
         ),
     )
     include_answer: bool = Field(
@@ -121,9 +133,12 @@ class ExtractParams(BaseParams):
         max_length=20,
         description="List of URLs to extract content from (1-20 URLs)",
     )
-    driver: str = Field(
-        default="vx6",
-        description="Browser driver to use for extraction",
+    driver: BrowserlessDriver | None = Field(
+        default=None,
+        description=(
+            "Browserless driver to use for extraction: "
+            "vx6, vx8, vx8-pro, vx10, vx10-pro, vx12, vx12-pro"
+        ),
     )
     wait: int | None = Field(
         default=None,

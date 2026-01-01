@@ -3,6 +3,7 @@
 from langchain_nimble import __all__
 
 EXPECTED_ALL = [
+    "BrowserlessDriver",
     "NimbleExtractRetriever",
     "NimbleExtractTool",
     "NimbleSearchRetriever",

@@ -5,7 +5,7 @@ from typing import Any
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
-from ._types import ExtractParams
+from ._types import BrowserlessDriver, ExtractParams
 from ._utilities import _NimbleClientMixin, handle_api_errors
 
 
@@ -31,16 +31,21 @@ class NimbleExtractToolInput(BaseModel):
         - URLs must be well-formed and accessible
         """,
     )
-    driver: str = Field(
-        default="vx6",
+    driver: BrowserlessDriver | None = Field(
+        default=None,
         description="""Browser driver technology for content extraction.
 
         Available drivers (Browserless Driver Technology):
-        - "vx6": Fast native requests - standard websites, static content (default)
+        - "vx6": Fast native requests - standard websites, static content
         - "vx8": Enhanced rendering - JavaScript-heavy sites, SPAs
+        - "vx8-pro": Enhanced rendering with extended capabilities
         - "vx10": Advanced rendering - maximum compatibility for complex sites
+        - "vx10-pro": Advanced rendering with extended capabilities
+        - "vx12": Premium rendering for the most demanding sites
+        - "vx12-pro": Premium rendering with extended capabilities
 
-        Higher driver levels have different pricing. Start with vx6 for most use cases.
+        If not specified, the API will select the most appropriate driver.
+        Higher driver levels have different pricing.
         """,
     )
     wait: int | None = Field(
@@ -116,7 +121,7 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
         max_retries: Maximum retry attempts for 5xx errors (default: 2).
         locale: Locale for results (default: en).
         country: Country code (default: US).
-        parsing_type: Content format - plain_text, markdown (default), simplified_html.
+        output_format: Content format - plain_text, markdown (default), simplified_html.
 
     Note:
         driver and wait parameters are configured per-request via tool input,
@@ -135,7 +140,7 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
         self,
         urls: list[str],
         *,
-        driver: str,
+        driver: BrowserlessDriver | None,
         wait: int | None,
         locale: str | None,
         country: str | None,
@@ -154,7 +159,7 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
         self,
         urls: list[str],
         *,
-        driver: str = "vx6",
+        driver: BrowserlessDriver | None = None,
         wait: int | None = None,
         locale: str | None = None,
         country: str | None = None,
@@ -182,7 +187,7 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
         self,
         urls: list[str],
         *,
-        driver: str = "vx6",
+        driver: BrowserlessDriver | None = None,
         wait: int | None = None,
         locale: str | None = None,
         country: str | None = None,

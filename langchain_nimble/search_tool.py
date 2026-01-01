@@ -46,7 +46,7 @@ class NimbleSearchToolInput(BaseModel):
         - Provides context needed for comprehensive understanding
 
         **When disabled (False):**
-        - Returns only metadata: title, snippet, URL, and position
+        - Returns only metadata: title, description, URL, and position
         - Executes quickly (typically 1-3 seconds)
         - Ideal for quick lookups, getting links, or simple fact-checking
         - Requires follow-up extraction if full content is needed
@@ -208,13 +208,13 @@ class NimbleSearchTool(_NimbleClientMixin, BaseTool):
         max_retries: Maximum retry attempts for 5xx errors (default: 2).
         locale: Locale for results (default: en).
         country: Country code (default: US).
-        parsing_type: Content format - plain_text, markdown (default), simplified_html.
+        output_format: Content format - plain_text, markdown (default), simplified_html.
     """
 
     name: str = "nimble_web_search"
     description: str = (
         "Search the web for current information. Returns search results with "
-        "titles, URLs, snippets, and optionally full page content. Use for "
+        "titles, URLs, descriptions, and optionally full page content. Use for "
         "research, fact-checking, finding sources, or gathering information."
     )
     args_schema: type[BaseModel] = NimbleSearchToolInput

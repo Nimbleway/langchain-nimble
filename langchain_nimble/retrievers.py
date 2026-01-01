@@ -11,7 +11,7 @@ from langchain_core.documents.base import Document
 from langchain_core.retrievers import BaseRetriever
 from pydantic import Field
 
-from ._types import ExtractParams, SearchParams
+from ._types import BrowserlessDriver, ExtractParams, SearchParams
 from ._utilities import _NimbleClientMixin, handle_api_errors
 
 
@@ -153,7 +153,8 @@ class NimbleExtractRetriever(_NimbleBaseRetriever):
         country: Country code (default: US).
         output_format: Content format - plain_text, markdown (default),
             simplified_html.
-        driver: Browser driver to use (default: vx6).
+        driver: Browser driver to use (vx6, vx8, vx8-pro, vx10, vx10-pro, vx12,
+            vx12-pro). If not specified, API selects the most appropriate driver.
         wait: Optional delay in milliseconds for render flow.
 
     Example:
@@ -161,7 +162,7 @@ class NimbleExtractRetriever(_NimbleBaseRetriever):
         >>> docs = await retriever.ainvoke("https://example.com")
     """
 
-    driver: str = "vx6"
+    driver: BrowserlessDriver | None = None
     wait: int | None = None
 
     def _get_endpoint(self) -> str:

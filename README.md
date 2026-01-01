@@ -13,8 +13,8 @@ langchain-nimble provides powerful web search and content extraction capabilitie
 - ✨ **Dual Interface**: Retrievers for chains, Tools for agents
 - 🔍 **Deep Search Mode**: Full page content extraction, not just snippets
 - 🤖 **LLM Answers**: Optional AI-generated answer summaries
-- 🎯 **Focus Modes**: Specialized search (general, news, location, shopping, seo, social)
-- 🛍️ **AI-Powered WSA**: Web Search Agents for shopping, SEO, and social media
+- 🎯 **Focus Modes**: Specialized search (general, news, location, shopping, geo, social)
+- 🛍️ **AI-Powered WSA**: Web Search Agents for shopping, geo, and social media
 - ⏰ **Time Range Filtering**: Quick recency filters (hour, day, week, month, year)
 - 📅 **Date Filtering**: Search by specific date ranges
 - 🌐 **Domain Control**: Include/exclude specific domains
@@ -106,12 +106,12 @@ retriever = NimbleSearchRetriever(
     focus="news"
 )
 
-# Time range filtering (v1.4.0+)
+# Time range filtering
 recent_retriever = NimbleSearchRetriever(
     time_range="week"  # hour, day, week, month, year
 )
 
-# Focus-based search (v1.5.0+)
+# Focus-based search
 news_retriever = NimbleSearchRetriever(focus="news")
 location_retriever = NimbleSearchRetriever(focus="location")
 shopping_retriever = NimbleSearchRetriever(focus="shopping")  # AI-powered WSA
@@ -146,7 +146,7 @@ docs = retriever.invoke("https://www.python.org/about/")
 
 # Advanced options
 retriever = NimbleExtractRetriever(
-    driver="vx8",      # vx6 (fast), vx8 (JS sites), vx10 (complex)
+    driver="vx8",      # Optional: vx6, vx8, vx8-pro, vx10, vx10-pro, vx12, vx12-pro
     wait=3000,         # Wait for dynamic content (ms)
     output_format="markdown"  # plain_text, markdown (default), simplified_html
 )
@@ -227,17 +227,17 @@ response = agent.invoke({
 |-----------|------|---------|-------------|
 | `api_key` | `str \| None` | `None` | API key (or set `NIMBLE_API_KEY`) |
 | `max_results` | `int` | `3` / `10`* | Number of results (1-100). Alias: `num_results` |
-| `focus` | `str` | `"general"` | Search focus mode (v1.5.0+) |
+| `focus` | `str` | `"general"` | Search focus mode |
 | `deep_search` | `bool` | `True` / `False`* | Full content vs. metadata only |
 | `include_answer` | `bool` | `False` | LLM answer (requires `deep_search=False`) |
-| `time_range` | `str` | `None` | Recency filter (v1.4.0+) - hour, day, week, month, year |
+| `time_range` | `str` | `None` | Recency filter - hour, day, week, month, year |
 | `include_domains` | `list[str]` | `None` | Domain whitelist |
 | `exclude_domains` | `list[str]` | `None` | Domain blacklist |
 | `start_date` | `str` | `None` | Filter after date (YYYY-MM-DD or YYYY) |
 | `end_date` | `str` | `None` | Filter before date (YYYY-MM-DD or YYYY) |
 | `locale` | `str` | `"en"` | Language/locale (e.g., `fr`, `es`) |
 | `country` | `str` | `"US"` | Country code (e.g., `UK`, `FR`) |
-| `output_format` | `str` | `"markdown"` | Content format (v1.4.0+) - plain_text, markdown, simplified_html |
+| `output_format` | `str` | `"markdown"` | Content format - plain_text, markdown, simplified_html |
 
 \* Defaults differ: Retriever uses `max_results=3, deep_search=True`; Tool uses `max_results=10, deep_search=False`
 
@@ -246,11 +246,11 @@ response = agent.invoke({
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `api_key` | `str \| None` | `None` | API key (or set `NIMBLE_API_KEY`) |
-| `driver` | `str` | `"vx6"` | `vx6` (fast), `vx8` (JS), `vx10` (complex) |
+| `driver` | `str \| None` | `None` | Optional driver: vx6, vx8, vx8-pro, vx10, vx10-pro, vx12, vx12-pro. API auto-selects if not specified. |
 | `wait` | `int \| None` | `None` | Wait before extraction (milliseconds) |
 | `locale` | `str` | `"en"` | Language/locale |
 | `country` | `str` | `"US"` | Country code |
-| `output_format` | `str` | `"markdown"` | Content format (v1.4.0+) - plain_text, markdown, simplified_html |
+| `output_format` | `str` | `"markdown"` | Content format - plain_text, markdown, simplified_html |
 
 ## Response Formats
 
@@ -312,7 +312,7 @@ Document(
 - **Academic research**: `include_domains=["edu", "scholar.google.com"]`
 - **Documentation**: `include_domains=["docs.python.org", "readthedocs.io"]`
 - **Remove noise**: `exclude_domains=["pinterest.com", "facebook.com"]`
-- **Recent news**: `start_date="2024-01-01", topic="news"`
+- **Recent news**: `start_date="2024-01-01", focus="news"`
 - **Historical**: `start_date="2020", end_date="2021"`
 
 ### Error Handling
@@ -338,7 +338,7 @@ except httpx.RequestError as e:
 1. Use async (`ainvoke`) for concurrent requests
 2. Batch URLs with `NimbleExtractTool` (up to 20)
 3. Request only needed results (`max_results`)
-4. Use `vx6` driver unless JavaScript rendering needed
+4. Let API auto-select driver, or use lower driver levels (vx6/vx8) unless advanced rendering needed
 5. Avoid `wait` parameter for static content
 
 ## Examples & Documentation
