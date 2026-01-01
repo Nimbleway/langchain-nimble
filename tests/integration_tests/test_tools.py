@@ -24,19 +24,18 @@ async def test_nimble_search_async_fast_mode(api_key: str) -> None:
     tool = NimbleSearchTool(api_key=api_key)
 
     result = await tool.ainvoke(
-        {"query": "LangChain framework", "num_results": 3, "deep_search": False}
+        {"query": "LangChain framework", "max_results": 3, "deep_search": False}
     )
 
     assert result is not None
-    assert "body" in result
-    assert len(result["body"]) > 0
-    assert len(result["body"]) <= 3
+    assert "results" in result
+    assert len(result["results"]) > 0
+    assert len(result["results"]) <= 3
 
-    # Check first result structure (metadata only, no full content)
-    first_result = result["body"][0]
-    assert "metadata" in first_result
-    assert "url" in first_result["metadata"]
-    assert first_result["metadata"]["url"].startswith("http")
+    # Check first result structure (v1.6.0: flattened structure)
+    first_result = result["results"][0]
+    assert "url" in first_result
+    assert first_result["url"].startswith("http")
 
 
 async def test_nimble_search_async_deep_mode(api_key: str) -> None:
@@ -44,18 +43,18 @@ async def test_nimble_search_async_deep_mode(api_key: str) -> None:
     tool = NimbleSearchTool(api_key=api_key)
 
     result = await tool.ainvoke(
-        {"query": "Python programming", "num_results": 2, "deep_search": True}
+        {"query": "Python programming", "max_results": 2, "deep_search": True}
     )
 
     assert result is not None
-    assert "body" in result
-    assert len(result["body"]) > 0
-    assert len(result["body"]) <= 2
+    assert "results" in result
+    assert len(result["results"]) > 0
+    assert len(result["results"]) <= 2
 
-    # Check that we got full content
-    first_result = result["body"][0]
-    assert "page_content" in first_result
-    assert len(first_result["page_content"]) > 0
+    # Check that we got full content (v1.6.0: content field at top-level)
+    first_result = result["results"][0]
+    assert "content" in first_result
+    assert len(first_result["content"]) > 0
 
 
 async def test_nimble_search_async_with_filters(api_key: str) -> None:
@@ -65,39 +64,40 @@ async def test_nimble_search_async_with_filters(api_key: str) -> None:
     result = await tool.ainvoke(
         {
             "query": "Python documentation",
-            "num_results": 5,
+            "max_results": 5,
             "deep_search": False,
             "include_domains": ["python.org", "docs.python.org"],
         }
     )
 
     assert result is not None
-    assert "body" in result
-    assert len(result["body"]) > 0
+    assert "results" in result
+    assert len(result["results"]) > 0
 
     # Verify domain filtering worked (if results returned)
-    for item in result["body"]:
-        url = item.get("metadata", {}).get("url", "")
+    # v1.6.0: url is at top-level, not nested in metadata
+    for item in result["results"]:
+        url = item.get("url", "")
         # Some results might match, but we just check structure is correct
         assert url.startswith("http")
 
 
-async def test_nimble_search_async_news_topic(api_key: str) -> None:
-    """Test async search with news topic in fast mode."""
+async def test_nimble_search_async_news_focus(api_key: str) -> None:
+    """Test async search with news focus mode (v1.5.0: renamed from topic)."""
     tool = NimbleSearchTool(api_key=api_key)
 
     result = await tool.ainvoke(
         {
             "query": "latest technology news",
-            "num_results": 3,
+            "max_results": 3,
             "deep_search": False,
-            "topic": "news",
+            "focus": "news",
         }
     )
 
     assert result is not None
-    assert "body" in result
-    assert len(result["body"]) > 0
+    assert "results" in result
+    assert len(result["results"]) > 0
 
 
 async def test_nimble_search_async_invalid_api_key() -> None:
@@ -106,7 +106,7 @@ async def test_nimble_search_async_invalid_api_key() -> None:
 
     with pytest.raises(Exception):
         await tool.ainvoke(
-            {"query": "test query", "num_results": 1, "deep_search": False}
+            {"query": "test query", "max_results": 1, "deep_search": False}
         )
 
 
@@ -114,12 +114,12 @@ async def test_nimble_search_sync_invoke(api_key: str) -> None:
     """Test synchronous invoke method in fast mode."""
     tool = NimbleSearchTool(api_key=api_key)
 
-    result = tool.invoke({"query": "LangChain", "num_results": 2, "deep_search": False})
+    result = tool.invoke({"query": "LangChain", "max_results": 2, "deep_search": False})
 
     assert result is not None
-    assert "body" in result
-    assert len(result["body"]) > 0
-    assert len(result["body"]) <= 2
+    assert "results" in result
+    assert len(result["results"]) > 0
+    assert len(result["results"]) <= 2
 
 
 # ============================================================================
@@ -134,10 +134,10 @@ async def test_nimble_extract_async_single_url(api_key: str) -> None:
     result = await tool.ainvoke({"urls": ["https://example.com"]})
 
     assert result is not None
-    assert "body" in result
-    assert len(result["body"]) > 0
+    assert "results" in result
+    assert len(result["results"]) > 0
 
-    first_result = result["body"][0]
-    assert "page_content" in first_result
-    assert len(first_result["page_content"]) > 0
-    assert "metadata" in first_result
+    # v1.6.0: content field at top-level, not nested
+    first_result = result["results"][0]
+    assert "content" in first_result
+    assert len(first_result["content"]) > 0

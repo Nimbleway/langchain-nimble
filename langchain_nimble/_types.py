@@ -5,16 +5,19 @@ from enum import Enum
 from pydantic import BaseModel, Field, model_validator
 
 
-class SearchTopic(str, Enum):
-    """Search topic/specialization."""
+class SearchFocus(str, Enum):
+    """Search focus mode/specialization."""
 
     GENERAL = "general"
     NEWS = "news"
     LOCATION = "location"
+    SHOPPING = "shopping"
+    GEO = "geo"
+    SOCIAL = "social"
 
 
-class ParsingType(str, Enum):
-    """Content parsing format."""
+class OutputFormat(str, Enum):
+    """Content output format."""
 
     PLAIN_TEXT = "plain_text"
     MARKDOWN = "markdown"
@@ -32,27 +35,37 @@ class BaseParams(BaseModel):
         default="US",
         description="Country code for results (e.g., 'US', 'UK', 'FR')",
     )
-    parsing_type: ParsingType = Field(
-        default=ParsingType.PLAIN_TEXT,
-        description="Format for parsing result content",
+    output_format: OutputFormat = Field(
+        default=OutputFormat.MARKDOWN,
+        description="Format for output content (default: markdown)",
     )
 
 
 class SearchParams(BaseParams):
     """Search parameters for /search endpoint."""
 
+    model_config = {"populate_by_name": True}
+
     query: str = Field(
         description="Search query string",
     )
-    num_results: int = Field(
+    max_results: int = Field(
         default=3,
         ge=1,
         le=100,
-        description="Number of results to return (1-100)",
+        alias="num_results",
+        description=(
+            "Maximum number of results to return (1-100). "
+            "Actual count may be less."
+        ),
     )
-    topic: SearchTopic = Field(
-        default=SearchTopic.GENERAL,
-        description="Search topic/specialization (general, news, or location)",
+    focus: SearchFocus = Field(
+        default=SearchFocus.GENERAL,
+        description=(
+            "Search focus mode. "
+            "Options: general (SERP), news (SERP), location (SERP), "
+            "shopping (WSA), geo (WSA), social (WSA)"
+        ),
     )
     deep_search: bool = Field(
         default=True,
@@ -64,7 +77,7 @@ class SearchParams(BaseParams):
     include_answer: bool = Field(
         default=False,
         description=(
-            "Generate LLM answer summary (only available when deep_search=False)"
+            "Generate LLM answer summary (only available when deep_search=False)."
         ),
     )
     include_domains: list[str] | None = Field(
@@ -74,6 +87,14 @@ class SearchParams(BaseParams):
     exclude_domains: list[str] | None = Field(
         default=None,
         description="List of domains to exclude from search results",
+    )
+    time_range: str | None = Field(
+        default=None,
+        description=(
+            "Filter by recency with predefined periods. "
+            "Options: hour, day, week, month, year. "
+            "Alternative to start_date/end_date for quick recency filtering."
+        ),
     )
     start_date: str | None = Field(
         default=None,

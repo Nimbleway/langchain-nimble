@@ -12,18 +12,22 @@ from ._utilities import _NimbleClientMixin, handle_api_errors
 class NimbleSearchToolInput(BaseModel):
     """Input schema for NimbleSearchTool."""
 
+    model_config = {"populate_by_name": True}
+
     query: str = Field(
         description=(
             "The search query to execute. "
             "Can be natural language questions or keywords."
         )
     )
-    num_results: int = Field(
+    max_results: int = Field(
         default=10,
         ge=1,
         le=100,
-        description="""Number of search results to return (1-100).
+        alias="num_results",
+        description="""Maximum number of search results to return (1-100).
 
+        Actual count may be less depending on available results.
         Default is 10, which balances thoroughness with response time.
         - Use 3-5 for quick lookups or simple questions
         - Use 10-20 for standard research tasks
@@ -72,14 +76,32 @@ class NimbleSearchToolInput(BaseModel):
         **Note:** Cannot be used together with deep_search=True.
         """,
     )
-    topic: str = Field(
+    focus: str = Field(
         default="general",
-        description="""Search topic specialization.
+        description="""Search focus mode.
 
-        Available topics:
-        - "general": Standard web search (default)
-        - "news": Search news sources and recent articles
-        - "location": Location-based and map search results
+        Available focus modes:
+        - "general": Standard web search (default, SERP-based)
+        - "news": Real-time news search (SERP-based)
+        - "location": Location-based search (SERP-based)
+        - "shopping": E-commerce and product search (WSA-based, AI-powered)
+        - "geo": Generative engine optimization (WSA-based, AI-powered)
+        - "social": Social media content search (WSA-based, AI-powered)
+        """,
+    )
+    time_range: str | None = Field(
+        default=None,
+        description="""Filter by recency with predefined periods.
+
+        Options:
+        - "hour": Content from the last hour
+        - "day": Content from the last 24 hours
+        - "week": Content from the last 7 days
+        - "month": Content from the last 30 days
+        - "year": Content from the last year
+
+        This is an alternative to start_date/end_date for quick recency filtering.
+        Example: time_range="week" for latest content from past week.
         """,
     )
     include_domains: list[str] | None = Field(
@@ -142,9 +164,9 @@ class NimbleSearchToolInput(BaseModel):
         If not specified, defaults to 'US'.
         """,
     )
-    parsing_type: str | None = Field(
+    output_format: str | None = Field(
         default=None,
-        description="""Content parsing format.
+        description="""Content output format.
 
         Available formats:
         - "plain_text": Plain text without formatting
@@ -200,50 +222,53 @@ class NimbleSearchTool(_NimbleClientMixin, BaseTool):
     def _build_request_body(
         self,
         query: str,
-        num_results: int,
+        max_results: int,
         *,
         deep_search: bool,
         include_answer: bool,
-        topic: str,
+        focus: str,
+        time_range: str | None,
         include_domains: list[str] | None,
         exclude_domains: list[str] | None,
         start_date: str | None,
         end_date: str | None,
         locale: str | None,
         country: str | None,
-        parsing_type: str | None,
+        output_format: str | None,
     ) -> dict[str, Any]:
         """Build search request body."""
         return SearchParams(
             query=query,
-            num_results=num_results,
+            max_results=max_results,
             locale=locale or self.locale,
             country=country or self.country,
-            parsing_type=parsing_type or self.parsing_type,
-            topic=topic,
+            output_format=output_format or self.output_format,
+            focus=focus,
             deep_search=deep_search,
             include_answer=include_answer,
+            time_range=time_range,
             include_domains=include_domains,
             exclude_domains=exclude_domains,
             start_date=start_date,
             end_date=end_date,
-        ).model_dump(exclude_none=True)
+        ).model_dump(exclude_none=True, by_alias=True)
 
     def _run(
         self,
         query: str,
-        num_results: int = 10,
+        max_results: int = 10,
         *,
         deep_search: bool = False,
         include_answer: bool = False,
-        topic: str = "general",
+        focus: str = "general",
+        time_range: str | None = None,
         include_domains: list[str] | None = None,
         exclude_domains: list[str] | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
         locale: str | None = None,
         country: str | None = None,
-        parsing_type: str | None = None,
+        output_format: str | None = None,
     ) -> dict[str, Any]:
         """Execute search synchronously."""
         if self._sync_client is None:
@@ -252,17 +277,18 @@ class NimbleSearchTool(_NimbleClientMixin, BaseTool):
 
         request_body = self._build_request_body(
             query=query,
-            num_results=num_results,
+            max_results=max_results,
             deep_search=deep_search,
             include_answer=include_answer,
-            topic=topic,
+            focus=focus,
+            time_range=time_range,
             include_domains=include_domains,
             exclude_domains=exclude_domains,
             start_date=start_date,
             end_date=end_date,
             locale=locale,
             country=country,
-            parsing_type=parsing_type,
+            output_format=output_format,
         )
 
         with handle_api_errors(operation="search"):
@@ -273,18 +299,19 @@ class NimbleSearchTool(_NimbleClientMixin, BaseTool):
     async def _arun(
         self,
         query: str,
-        num_results: int = 10,
+        max_results: int = 10,
         *,
         deep_search: bool = False,
         include_answer: bool = False,
-        topic: str = "general",
+        focus: str = "general",
+        time_range: str | None = None,
         include_domains: list[str] | None = None,
         exclude_domains: list[str] | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
         locale: str | None = None,
         country: str | None = None,
-        parsing_type: str | None = None,
+        output_format: str | None = None,
     ) -> dict[str, Any]:
         """Execute search asynchronously."""
         if self._async_client is None:
@@ -293,17 +320,18 @@ class NimbleSearchTool(_NimbleClientMixin, BaseTool):
 
         request_body = self._build_request_body(
             query=query,
-            num_results=num_results,
+            max_results=max_results,
             deep_search=deep_search,
             include_answer=include_answer,
-            topic=topic,
+            focus=focus,
+            time_range=time_range,
             include_domains=include_domains,
             exclude_domains=exclude_domains,
             start_date=start_date,
             end_date=end_date,
             locale=locale,
             country=country,
-            parsing_type=parsing_type,
+            output_format=output_format,
         )
 
         with handle_api_errors(operation="search"):

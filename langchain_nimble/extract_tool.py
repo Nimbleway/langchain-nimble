@@ -82,16 +82,16 @@ class NimbleExtractToolInput(BaseModel):
         If not provided, uses the tool's configured country (default: 'US').
         """,
     )
-    parsing_type: str | None = Field(
+    output_format: str | None = Field(
         default=None,
-        description="""Content parsing format.
+        description="""Content output format.
 
         Available formats:
         - "plain_text": Plain text without formatting
-        - "markdown": Markdown-formatted content with structure
+        - "markdown": Markdown-formatted content with structure (default)
         - "simplified_html": Clean HTML without scripts/styles
 
-        If not provided, uses the tool's configured parsing type
+        If not provided, uses the tool's configured output format
         (default: 'markdown').
         """,
     )
@@ -139,13 +139,13 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
         wait: int | None,
         locale: str | None,
         country: str | None,
-        parsing_type: str | None,
+        output_format: str | None,
     ) -> dict[str, Any]:
         return ExtractParams(
             links=urls,
             locale=locale or self.locale,
             country=country or self.country,
-            parsing_type=parsing_type or self.parsing_type,
+            output_format=output_format or self.output_format,
             driver=driver,
             wait=wait,
         ).model_dump(exclude_none=True)
@@ -158,7 +158,7 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
         wait: int | None = None,
         locale: str | None = None,
         country: str | None = None,
-        parsing_type: str | None = None,
+        output_format: str | None = None,
     ) -> dict[str, Any]:
         if self._sync_client is None:
             msg = "Sync client not initialized"
@@ -170,7 +170,7 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
             wait=wait,
             locale=locale,
             country=country,
-            parsing_type=parsing_type,
+            output_format=output_format,
         )
 
         with handle_api_errors(operation="extract"):
@@ -186,7 +186,7 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
         wait: int | None = None,
         locale: str | None = None,
         country: str | None = None,
-        parsing_type: str | None = None,
+        output_format: str | None = None,
     ) -> dict[str, Any]:
         if self._async_client is None:
             msg = "Async client not initialized"
@@ -198,7 +198,7 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
             wait=wait,
             locale=locale,
             country=country,
-            parsing_type=parsing_type,
+            output_format=output_format,
         )
 
         with handle_api_errors(operation="extract"):

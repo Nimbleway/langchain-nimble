@@ -13,12 +13,14 @@ langchain-nimble provides powerful web search and content extraction capabilitie
 - ✨ **Dual Interface**: Retrievers for chains, Tools for agents
 - 🔍 **Deep Search Mode**: Full page content extraction, not just snippets
 - 🤖 **LLM Answers**: Optional AI-generated answer summaries
-- 🎯 **Topic Routing**: Specialized search for general, news, or location queries
-- 📅 **Temporal Filtering**: Search by date ranges
+- 🎯 **Focus Modes**: Specialized search (general, news, location, shopping, seo, social)
+- 🛍️ **AI-Powered WSA**: Web Search Agents for shopping, SEO, and social media
+- ⏰ **Time Range Filtering**: Quick recency filters (hour, day, week, month, year)
+- 📅 **Date Filtering**: Search by specific date ranges
 - 🌐 **Domain Control**: Include/exclude specific domains
 - ⚡ **Full Async Support**: Both sync and async implementations
 - 🔄 **Smart Retry Logic**: Automatic retry with exponential backoff
-- 📊 **Multiple Formats**: Plain text, Markdown, or HTML output
+- 📊 **Multiple Formats**: Plain text, Markdown (default), or HTML output
 
 ## Installation
 
@@ -46,7 +48,7 @@ Or pass it directly: `NimbleSearchRetriever(api_key="your-key")`
 from langchain_nimble import NimbleSearchRetriever
 
 # Create a retriever
-retriever = NimbleSearchRetriever(num_results=5)
+retriever = NimbleSearchRetriever(max_results=5)
 
 # Search (sync or async with ainvoke)
 documents = retriever.invoke("latest developments in AI")
@@ -68,8 +70,8 @@ from langchain_nimble import NimbleSearchRetriever
 
 # Fast search - returns metadata only
 retriever = NimbleSearchRetriever(
-    num_results=5,
-    deep_search=False  # Fast, snippets only
+    max_results=5,
+    deep_search=False  # Fast, metadata only
 )
 docs = retriever.invoke("Python best practices 2024")
 ```
@@ -80,7 +82,7 @@ Fetch full page content from each result:
 
 ```python
 retriever = NimbleSearchRetriever(
-    num_results=3,
+    max_results=3,
     deep_search=True  # Full page content
 )
 docs = retriever.invoke("comprehensive guide to FastAPI")
@@ -91,22 +93,28 @@ docs = retriever.invoke("comprehensive guide to FastAPI")
 ```python
 # Domain filtering
 retriever = NimbleSearchRetriever(
-    num_results=5,
+    max_results=5,
     include_domains=["python.org", "docs.python.org"],
     exclude_domains=["pinterest.com"]
 )
 
 # Date filtering
 retriever = NimbleSearchRetriever(
-    num_results=10,
+    max_results=10,
     start_date="2024-01-01",
     end_date="2024-12-31",
-    topic="news"
+    focus="news"
 )
 
-# Topic-based search
-news_retriever = NimbleSearchRetriever(topic="news")
-location_retriever = NimbleSearchRetriever(topic="location")
+# Time range filtering (v1.4.0+)
+recent_retriever = NimbleSearchRetriever(
+    time_range="week"  # hour, day, week, month, year
+)
+
+# Focus-based search (v1.5.0+)
+news_retriever = NimbleSearchRetriever(focus="news")
+location_retriever = NimbleSearchRetriever(focus="location")
+shopping_retriever = NimbleSearchRetriever(focus="shopping")  # AI-powered WSA
 ```
 
 #### LLM Answer Generation
@@ -115,7 +123,7 @@ Get AI-generated answers (only with `deep_search=False`):
 
 ```python
 retriever = NimbleSearchRetriever(
-    num_results=5,
+    max_results=5,
     deep_search=False,
     include_answer=True
 )
@@ -140,7 +148,7 @@ docs = retriever.invoke("https://www.python.org/about/")
 retriever = NimbleExtractRetriever(
     driver="vx8",      # vx6 (fast), vx8 (JS sites), vx10 (complex)
     wait=3000,         # Wait for dynamic content (ms)
-    parsing_type="markdown"
+    output_format="markdown"  # plain_text, markdown (default), simplified_html
 )
 ```
 
@@ -218,19 +226,20 @@ response = agent.invoke({
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `api_key` | `str \| None` | `None` | API key (or set `NIMBLE_API_KEY`) |
-| `num_results` | `int` | `3` / `10`* | Number of results (1-100) |
-| `topic` | `str` | `"general"` | `general`, `news`, or `location` |
+| `max_results` | `int` | `3` / `10`* | Number of results (1-100). Alias: `num_results` |
+| `focus` | `str` | `"general"` | Search focus mode (v1.5.0+) |
 | `deep_search` | `bool` | `True` / `False`* | Full content vs. metadata only |
 | `include_answer` | `bool` | `False` | LLM answer (requires `deep_search=False`) |
+| `time_range` | `str` | `None` | Recency filter (v1.4.0+) - hour, day, week, month, year |
 | `include_domains` | `list[str]` | `None` | Domain whitelist |
 | `exclude_domains` | `list[str]` | `None` | Domain blacklist |
 | `start_date` | `str` | `None` | Filter after date (YYYY-MM-DD or YYYY) |
 | `end_date` | `str` | `None` | Filter before date (YYYY-MM-DD or YYYY) |
 | `locale` | `str` | `"en"` | Language/locale (e.g., `fr`, `es`) |
 | `country` | `str` | `"US"` | Country code (e.g., `UK`, `FR`) |
-| `parsing_type` | `str` | `"plain_text"` | `plain_text`, `markdown`, `simplified_html` |
+| `output_format` | `str` | `"markdown"` | Content format (v1.4.0+) - plain_text, markdown, simplified_html |
 
-\* Defaults differ: Retriever uses `num_results=3, deep_search=True`; Tool uses `num_results=10, deep_search=False`
+\* Defaults differ: Retriever uses `max_results=3, deep_search=True`; Tool uses `max_results=10, deep_search=False`
 
 ### Extract Parameters (NimbleExtractRetriever & NimbleExtractTool)
 
@@ -241,7 +250,7 @@ response = agent.invoke({
 | `wait` | `int \| None` | `None` | Wait before extraction (milliseconds) |
 | `locale` | `str` | `"en"` | Language/locale |
 | `country` | `str` | `"US"` | Country code |
-| `parsing_type` | `str` | `"plain_text"` | Content format |
+| `output_format` | `str` | `"markdown"` | Content format (v1.4.0+) - plain_text, markdown, simplified_html |
 
 ## Response Formats
 
@@ -249,11 +258,11 @@ response = agent.invoke({
 
 ```python
 Document(
-    page_content="Full content or snippet...",
+    page_content="Full content...",
     metadata={
         "title": "Page Title",
         "url": "https://example.com",
-        "snippet": "Description...",
+        "description": "Page description...",
         "position": 1,
         "entity_type": "organic"  # or "answer"
     }
@@ -264,13 +273,13 @@ Document(
 
 ```python
 {
-    "body": [
+    "results": [
         {
-            "page_content": "Content...",
+            "title": "Title",
+            "url": "https://...",
+            "description": "...",
+            "content": "Full content...",
             "metadata": {
-                "title": "Title",
-                "url": "https://...",
-                "snippet": "...",
                 "position": 1,
                 "entity_type": "organic"
             }
@@ -328,7 +337,7 @@ except httpx.RequestError as e:
 
 1. Use async (`ainvoke`) for concurrent requests
 2. Batch URLs with `NimbleExtractTool` (up to 20)
-3. Request only needed results (`num_results`)
+3. Request only needed results (`max_results`)
 4. Use `vx6` driver unless JavaScript rendering needed
 5. Avoid `wait` parameter for static content
 
