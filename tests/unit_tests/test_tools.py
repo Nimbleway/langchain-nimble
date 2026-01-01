@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from langchain_nimble import NimbleExtractTool, NimbleSearchTool
+from langchain_nimble import BrowserlessDriver, NimbleExtractTool, NimbleSearchTool
 
 
 def test_nimble_search_tool_init() -> None:
@@ -33,13 +33,17 @@ def test_nimble_search_tool_run_basic(mock_create_client: MagicMock) -> None:
     mock_client = MagicMock(spec=httpx.Client)
     mock_response = MagicMock()
     mock_response.json.return_value = {
-        "body": [
+        "results": [
             {
-                "page_content": "Test content",
+                "title": "Test Title",
+                "url": "https://example.com",
+                "description": "Test description",
+                "content": "Test content",
                 "metadata": {
-                    "title": "Test Title",
-                    "url": "https://example.com",
-                    "snippet": "Test snippet",
+                    "position": 1,
+                    "entity_type": "organic",
+                    "country": "US",
+                    "locale": "en",
                 },
             }
         ]
@@ -51,11 +55,11 @@ def test_nimble_search_tool_run_basic(mock_create_client: MagicMock) -> None:
 
     # Create tool and run search
     tool = NimbleSearchTool(api_key="test_key")
-    result = tool._run(query="test query", num_results=3)
+    result = tool._run(query="test query", max_results=3)
 
     # Verify
     assert result is not None
-    assert "body" in result
+    assert "results" in result
     mock_client.post.assert_called_once()
 
 
@@ -66,13 +70,17 @@ async def test_nimble_search_tool_arun_basic(mock_create_client: MagicMock) -> N
     mock_client = MagicMock(spec=httpx.AsyncClient)
     mock_response = MagicMock()
     mock_response.json.return_value = {
-        "body": [
+        "results": [
             {
-                "page_content": "Test content",
+                "title": "Test Title",
+                "url": "https://example.com",
+                "description": "Test description",
+                "content": "Test content",
                 "metadata": {
-                    "title": "Test Title",
-                    "url": "https://example.com",
-                    "snippet": "Test snippet",
+                    "position": 1,
+                    "entity_type": "organic",
+                    "country": "US",
+                    "locale": "en",
                 },
             }
         ]
@@ -89,11 +97,11 @@ async def test_nimble_search_tool_arun_basic(mock_create_client: MagicMock) -> N
 
     # Create tool and run search
     tool = NimbleSearchTool(api_key="test_key")
-    result = await tool._arun(query="test query", num_results=3)
+    result = await tool._arun(query="test query", max_results=3)
 
     # Verify
     assert result is not None
-    assert "body" in result
+    assert "results" in result
 
 
 @patch("langchain_nimble._utilities.create_sync_client")
@@ -102,7 +110,7 @@ def test_nimble_search_tool_run_with_options(mock_create_client: MagicMock) -> N
     # Mock the client and response
     mock_client = MagicMock(spec=httpx.Client)
     mock_response = MagicMock()
-    mock_response.json.return_value = {"body": []}
+    mock_response.json.return_value = {"results": []}
     mock_response.status_code = 200
     mock_response.raise_for_status = MagicMock()
     mock_client.post.return_value = mock_response
@@ -112,9 +120,9 @@ def test_nimble_search_tool_run_with_options(mock_create_client: MagicMock) -> N
     tool = NimbleSearchTool(api_key="test_key")
     result = tool._run(
         query="test query",
-        num_results=5,
+        max_results=5,
         deep_search=True,
-        topic="news",
+        focus="news",
         include_domains=["example.com"],
         exclude_domains=["spam.com"],
         start_date="2024-01-01",
@@ -129,13 +137,78 @@ def test_nimble_search_tool_run_with_options(mock_create_client: MagicMock) -> N
     call_args = mock_client.post.call_args
     request_body = call_args.kwargs["json"]
     assert request_body["query"] == "test query"
-    assert request_body["num_results"] == 5
+    assert request_body["num_results"] == 5  # Sent as num_results (alias)
     assert request_body["deep_search"] is True
-    assert request_body["topic"] == "news"
+    assert request_body["focus"] == "news"
     assert request_body["include_domains"] == ["example.com"]
     assert request_body["exclude_domains"] == ["spam.com"]
     assert request_body["start_date"] == "2024-01-01"
     assert request_body["end_date"] == "2024-12-31"
+
+
+@patch("langchain_nimble._utilities.create_sync_client")
+def test_nimble_search_tool_time_range(mock_create_client: MagicMock) -> None:
+    """Test search with time_range parameter (v1.4.0 feature)."""
+    mock_client = MagicMock(spec=httpx.Client)
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"results": []}
+    mock_response.status_code = 200
+    mock_response.raise_for_status = MagicMock()
+    mock_client.post.return_value = mock_response
+    mock_create_client.return_value = mock_client
+
+    tool = NimbleSearchTool(api_key="test_key")
+    result = tool._run(
+        query="latest AI breakthroughs",
+        max_results=10,
+        time_range="week",
+    )
+
+    assert result is not None
+    mock_client.post.assert_called_once()
+
+    call_args = mock_client.post.call_args
+    request_body = call_args.kwargs["json"]
+    assert request_body["time_range"] == "week"
+    assert request_body["query"] == "latest AI breakthroughs"
+
+
+@patch("langchain_nimble._utilities.create_sync_client")
+def test_nimble_search_tool_new_focus_modes(mock_create_client: MagicMock) -> None:
+    """Test search with new focus modes from v1.5.0 (shopping, seo, social)."""
+    mock_client = MagicMock(spec=httpx.Client)
+    mock_response = MagicMock()
+    # WSA focus modes return structured data
+    mock_response.json.return_value = {
+        "results": [
+            {
+                "title": "Product Name",
+                "url": "https://amazon.com/product",
+                "price": "$29.99",
+                "rating": 4.5,
+            }
+        ],
+        "metadata": {"agent_name": "amazon_search"},
+    }
+    mock_response.status_code = 200
+    mock_response.raise_for_status = MagicMock()
+    mock_client.post.return_value = mock_response
+    mock_create_client.return_value = mock_client
+
+    tool = NimbleSearchTool(api_key="test_key")
+    result = tool._run(
+        query="best laptop for developers",
+        focus="shopping",
+        max_results=10,
+    )
+
+    assert result is not None
+    assert "results" in result
+    mock_client.post.assert_called_once()
+
+    call_args = mock_client.post.call_args
+    request_body = call_args.kwargs["json"]
+    assert request_body["focus"] == "shopping"
 
 
 @patch("langchain_nimble._utilities.create_sync_client")
@@ -144,7 +217,7 @@ def test_nimble_search_tool_invoke(mock_create_client: MagicMock) -> None:
     # Mock the client and response
     mock_client = MagicMock(spec=httpx.Client)
     mock_response = MagicMock()
-    mock_response.json.return_value = {"body": []}
+    mock_response.json.return_value = {"results": []}
     mock_response.status_code = 200
     mock_response.raise_for_status = MagicMock()
     mock_client.post.return_value = mock_response
@@ -152,7 +225,7 @@ def test_nimble_search_tool_invoke(mock_create_client: MagicMock) -> None:
 
     # Create tool and invoke
     tool = NimbleSearchTool(api_key="test_key")
-    result = tool.invoke({"query": "test query", "num_results": 3})
+    result = tool.invoke({"query": "test query", "max_results": 3})
 
     # Verify
     assert result is not None
@@ -165,7 +238,7 @@ async def test_nimble_search_tool_ainvoke(mock_create_client: MagicMock) -> None
     # Mock the async client and response
     mock_client = MagicMock(spec=httpx.AsyncClient)
     mock_response = MagicMock()
-    mock_response.json.return_value = {"body": []}
+    mock_response.json.return_value = {"results": []}
     mock_response.status_code = 200
     mock_response.raise_for_status = MagicMock()
 
@@ -178,7 +251,7 @@ async def test_nimble_search_tool_ainvoke(mock_create_client: MagicMock) -> None
 
     # Create tool and invoke
     tool = NimbleSearchTool(api_key="test_key")
-    result = await tool.ainvoke({"query": "test query", "num_results": 3})
+    result = await tool.ainvoke({"query": "test query", "max_results": 3})
 
     # Verify
     assert result is not None
@@ -188,21 +261,35 @@ def test_nimble_search_tool_input_validation() -> None:
     """Test NimbleSearchToolInput validation."""
     from langchain_nimble.search_tool import NimbleSearchToolInput
 
-    # Valid input
-    valid_input = NimbleSearchToolInput(query="test", num_results=10)
+    # Valid input with max_results
+    valid_input = NimbleSearchToolInput(query="test", max_results=10)
     assert valid_input.query == "test"
-    assert valid_input.num_results == 10
+    assert valid_input.max_results == 10
 
-    # Test bounds on num_results
+    # Test bounds on max_results
     with pytest.raises(Exception):  # Pydantic validation error
-        NimbleSearchToolInput(query="test", num_results=0)
+        NimbleSearchToolInput(query="test", max_results=0)
 
     with pytest.raises(Exception):  # Pydantic validation error
-        NimbleSearchToolInput(query="test", num_results=101)
+        NimbleSearchToolInput(query="test", max_results=101)
 
     # Test mutually exclusive deep_search and include_answer
     with pytest.raises(ValueError, match="deep_search and include_answer cannot both"):
         NimbleSearchToolInput(query="test", deep_search=True, include_answer=True)
+
+
+def test_nimble_search_tool_backward_compatibility() -> None:
+    """Test that num_results alias still works for backward compatibility."""
+    from langchain_nimble.search_tool import NimbleSearchToolInput
+
+    # num_results alias should still work
+    input_with_alias = NimbleSearchToolInput(query="test", num_results=5)
+    assert input_with_alias.max_results == 5
+
+    # Verify it serializes correctly for API
+    dumped = input_with_alias.model_dump(by_alias=True)
+    assert dumped["num_results"] == 5
+    assert "max_results" not in dumped
 
 
 @pytest.mark.benchmark
@@ -245,13 +332,11 @@ def test_nimble_extract_tool_run_basic(mock_create_client: MagicMock) -> None:
     mock_client = MagicMock(spec=httpx.Client)
     mock_response = MagicMock()
     mock_response.json.return_value = {
-        "body": [
+        "results": [
             {
-                "page_content": "Extracted content from the page",
-                "metadata": {
-                    "title": "Page Title",
-                    "url": "https://example.com",
-                },
+                "title": "Page Title",
+                "url": "https://example.com",
+                "content": "Extracted content from the page",
             }
         ]
     }
@@ -264,7 +349,7 @@ def test_nimble_extract_tool_run_basic(mock_create_client: MagicMock) -> None:
     result = tool._run(urls=["https://example.com"])
 
     assert result is not None
-    assert "body" in result
+    assert "results" in result
     mock_client.post.assert_called_once()
 
 
@@ -274,13 +359,11 @@ async def test_nimble_extract_tool_arun_basic(mock_create_client: MagicMock) -> 
     mock_client = MagicMock(spec=httpx.AsyncClient)
     mock_response = MagicMock()
     mock_response.json.return_value = {
-        "body": [
+        "results": [
             {
-                "page_content": "Extracted content",
-                "metadata": {
-                    "title": "Test Title",
-                    "url": "https://example.com",
-                },
+                "content": "Extracted content",
+                "title": "Test Title",
+                "url": "https://example.com",
             }
         ]
     }
@@ -297,7 +380,7 @@ async def test_nimble_extract_tool_arun_basic(mock_create_client: MagicMock) -> 
     result = await tool._arun(urls=["https://example.com"])
 
     assert result is not None
-    assert "body" in result
+    assert "results" in result
 
 
 @patch("langchain_nimble._utilities.create_sync_client")
@@ -306,10 +389,10 @@ def test_nimble_extract_tool_run_multiple_urls(mock_create_client: MagicMock) ->
     mock_client = MagicMock(spec=httpx.Client)
     mock_response = MagicMock()
     mock_response.json.return_value = {
-        "body": [
-            {"page_content": "Content 1", "metadata": {"url": "https://site1.com"}},
-            {"page_content": "Content 2", "metadata": {"url": "https://site2.com"}},
-            {"page_content": "Content 3", "metadata": {"url": "https://site3.com"}},
+        "results": [
+            {"content": "Content 1", "url": "https://site1.com", "title": "Site 1"},
+            {"content": "Content 2", "url": "https://site2.com", "title": "Site 2"},
+            {"content": "Content 3", "url": "https://site3.com", "title": "Site 3"},
         ]
     }
     mock_response.status_code = 200
@@ -323,8 +406,8 @@ def test_nimble_extract_tool_run_multiple_urls(mock_create_client: MagicMock) ->
     )
 
     assert result is not None
-    assert "body" in result
-    assert len(result["body"]) == 3
+    assert "results" in result
+    assert len(result["results"]) == 3
     mock_client.post.assert_called_once()
 
     call_args = mock_client.post.call_args
@@ -338,7 +421,7 @@ def test_nimble_extract_tool_run_with_options(mock_create_client: MagicMock) -> 
     """Test synchronous extraction with all options."""
     mock_client = MagicMock(spec=httpx.Client)
     mock_response = MagicMock()
-    mock_response.json.return_value = {"body": []}
+    mock_response.json.return_value = {"results": []}
     mock_response.status_code = 200
     mock_response.raise_for_status = MagicMock()
     mock_client.post.return_value = mock_response
@@ -347,11 +430,11 @@ def test_nimble_extract_tool_run_with_options(mock_create_client: MagicMock) -> 
     tool = NimbleExtractTool(api_key="test_key")
     result = tool._run(
         urls=["https://example.com"],
-        driver="vx6",
+        driver=BrowserlessDriver.VX6,
         wait=3000,
         locale="fr",
         country="FR",
-        parsing_type="markdown",
+        output_format="markdown",
     )
 
     assert result is not None
@@ -364,7 +447,7 @@ def test_nimble_extract_tool_run_with_options(mock_create_client: MagicMock) -> 
     assert request_body["wait"] == 3000
     assert request_body["locale"] == "fr"
     assert request_body["country"] == "FR"
-    assert request_body["parsing_type"] == "markdown"
+    assert request_body["output_format"] == "markdown"
 
 
 @patch("langchain_nimble._utilities.create_sync_client")
@@ -372,7 +455,7 @@ def test_nimble_extract_tool_invoke(mock_create_client: MagicMock) -> None:
     """Test tool invoke method."""
     mock_client = MagicMock(spec=httpx.Client)
     mock_response = MagicMock()
-    mock_response.json.return_value = {"body": []}
+    mock_response.json.return_value = {"results": []}
     mock_response.status_code = 200
     mock_response.raise_for_status = MagicMock()
     mock_client.post.return_value = mock_response
@@ -390,7 +473,7 @@ async def test_nimble_extract_tool_ainvoke(mock_create_client: MagicMock) -> Non
     """Test tool async invoke method."""
     mock_client = MagicMock(spec=httpx.AsyncClient)
     mock_response = MagicMock()
-    mock_response.json.return_value = {"body": []}
+    mock_response.json.return_value = {"results": []}
     mock_response.status_code = 200
     mock_response.raise_for_status = MagicMock()
 

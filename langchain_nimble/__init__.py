@@ -2,6 +2,7 @@
 
 from importlib import metadata
 
+from langchain_nimble._types import BrowserlessDriver
 from langchain_nimble.extract_tool import NimbleExtractTool
 from langchain_nimble.retrievers import NimbleExtractRetriever, NimbleSearchRetriever
 from langchain_nimble.search_tool import NimbleSearchTool
@@ -14,6 +15,7 @@ except metadata.PackageNotFoundError:
 del metadata  # optional, avoids polluting the results of dir(__package__)
 
 __all__ = [
+    "BrowserlessDriver",
     "NimbleExtractRetriever",
     "NimbleExtractTool",
     "NimbleSearchRetriever",

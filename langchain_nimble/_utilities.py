@@ -41,7 +41,7 @@ class _NimbleClientMixin(BaseModel):
 
     locale: str = "en"
     country: str = "US"
-    parsing_type: str = "markdown"
+    output_format: str = "markdown"
 
     _sync_client: httpx.Client | None = None
     _async_client: httpx.AsyncClient | None = None

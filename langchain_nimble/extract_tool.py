@@ -5,7 +5,7 @@ from typing import Any
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
-from ._types import ExtractParams
+from ._types import BrowserlessDriver, ExtractParams
 from ._utilities import _NimbleClientMixin, handle_api_errors
 
 
@@ -31,16 +31,21 @@ class NimbleExtractToolInput(BaseModel):
         - URLs must be well-formed and accessible
         """,
     )
-    driver: str = Field(
-        default="vx6",
+    driver: BrowserlessDriver | None = Field(
+        default=None,
         description="""Browser driver technology for content extraction.
 
         Available drivers (Browserless Driver Technology):
-        - "vx6": Fast native requests - standard websites, static content (default)
+        - "vx6": Fast native requests - standard websites, static content
         - "vx8": Enhanced rendering - JavaScript-heavy sites, SPAs
+        - "vx8-pro": Enhanced rendering with extended capabilities
         - "vx10": Advanced rendering - maximum compatibility for complex sites
+        - "vx10-pro": Advanced rendering with extended capabilities
+        - "vx12": Premium rendering for the most demanding sites
+        - "vx12-pro": Premium rendering with extended capabilities
 
-        Higher driver levels have different pricing. Start with vx6 for most use cases.
+        If not specified, the API will select the most appropriate driver.
+        Higher driver levels have different pricing.
         """,
     )
     wait: int | None = Field(
@@ -82,16 +87,16 @@ class NimbleExtractToolInput(BaseModel):
         If not provided, uses the tool's configured country (default: 'US').
         """,
     )
-    parsing_type: str | None = Field(
+    output_format: str | None = Field(
         default=None,
-        description="""Content parsing format.
+        description="""Content output format.
 
         Available formats:
         - "plain_text": Plain text without formatting
-        - "markdown": Markdown-formatted content with structure
+        - "markdown": Markdown-formatted content with structure (default)
         - "simplified_html": Clean HTML without scripts/styles
 
-        If not provided, uses the tool's configured parsing type
+        If not provided, uses the tool's configured output format
         (default: 'markdown').
         """,
     )
@@ -116,7 +121,7 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
         max_retries: Maximum retry attempts for 5xx errors (default: 2).
         locale: Locale for results (default: en).
         country: Country code (default: US).
-        parsing_type: Content format - plain_text, markdown (default), simplified_html.
+        output_format: Content format - plain_text, markdown (default), simplified_html.
 
     Note:
         driver and wait parameters are configured per-request via tool input,
@@ -135,17 +140,17 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
         self,
         urls: list[str],
         *,
-        driver: str,
+        driver: BrowserlessDriver | None,
         wait: int | None,
         locale: str | None,
         country: str | None,
-        parsing_type: str | None,
+        output_format: str | None,
     ) -> dict[str, Any]:
         return ExtractParams(
             links=urls,
             locale=locale or self.locale,
             country=country or self.country,
-            parsing_type=parsing_type or self.parsing_type,
+            output_format=output_format or self.output_format,
             driver=driver,
             wait=wait,
         ).model_dump(exclude_none=True)
@@ -154,11 +159,11 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
         self,
         urls: list[str],
         *,
-        driver: str = "vx6",
+        driver: BrowserlessDriver | None = None,
         wait: int | None = None,
         locale: str | None = None,
         country: str | None = None,
-        parsing_type: str | None = None,
+        output_format: str | None = None,
     ) -> dict[str, Any]:
         if self._sync_client is None:
             msg = "Sync client not initialized"
@@ -170,7 +175,7 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
             wait=wait,
             locale=locale,
             country=country,
-            parsing_type=parsing_type,
+            output_format=output_format,
         )
 
         with handle_api_errors(operation="extract"):
@@ -182,11 +187,11 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
         self,
         urls: list[str],
         *,
-        driver: str = "vx6",
+        driver: BrowserlessDriver | None = None,
         wait: int | None = None,
         locale: str | None = None,
         country: str | None = None,
-        parsing_type: str | None = None,
+        output_format: str | None = None,
     ) -> dict[str, Any]:
         if self._async_client is None:
             msg = "Async client not initialized"
@@ -198,7 +203,7 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
             wait=wait,
             locale=locale,
             country=country,
-            parsing_type=parsing_type,
+            output_format=output_format,
         )
 
         with handle_api_errors(operation="extract"):

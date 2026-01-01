@@ -11,7 +11,7 @@ from langchain_core.documents.base import Document
 from langchain_core.retrievers import BaseRetriever
 from pydantic import Field
 
-from ._types import ExtractParams, SearchParams
+from ._types import BrowserlessDriver, ExtractParams, SearchParams
 from ._utilities import _NimbleClientMixin, handle_api_errors
 
 
@@ -61,19 +61,26 @@ class _NimbleBaseRetriever(_NimbleClientMixin, BaseRetriever):
             return self._parse_response(response.json())
 
     def _parse_response(self, raw_json_content: dict[str, Any]) -> list[Document]:
-        """Parse API response into Documents."""
+        """Parse API response into Documents.
+
+        Response structure:
+        - results: list of result objects
+        - content: main content of each result
+        - title, url, description: top-level fields
+        - metadata: nested object with position, entity_type, etc.
+        """
         return [
             Document(
-                page_content=doc.get("page_content", ""),
+                page_content=doc.get("content", ""),
                 metadata={
-                    "title": doc.get("metadata", {}).get("title", ""),
-                    "snippet": doc.get("metadata", {}).get("snippet", ""),
-                    "url": doc.get("metadata", {}).get("url", ""),
+                    "title": doc.get("title", ""),
+                    "description": doc.get("description", ""),
+                    "url": doc.get("url", ""),
                     "position": doc.get("metadata", {}).get("position", -1),
                     "entity_type": doc.get("metadata", {}).get("entity_type", ""),
                 },
             )
-            for doc in raw_json_content.get("body", [])
+            for doc in raw_json_content.get("results", [])
         ]
 
 
@@ -81,30 +88,35 @@ class NimbleSearchRetriever(_NimbleBaseRetriever):
     """Search retriever for Nimble API.
 
     Retrieves search results with full page content extraction.
-    Supports general, news, and location topics.
+    Supports SERP focuses (general, news, location) and WSA focuses
+    (shopping, geo, social).
 
     Args:
         api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
         base_url: Base URL for API (defaults to production endpoint).
-        num_results: Number of results to return (1-100, default: 3). Alias: k.
-        topic: Search topic - general, news, or location (default: general).
+        max_results: Maximum number of results to return (1-100, default: 3). Alias: k.
+        focus: Search focus mode - general, news, location,
+            shopping, geo, social.
         deep_search: Fetch full page content (default: True).
         include_answer: Generate LLM answer (only with deep_search=False).
         include_domains: Whitelist of domains to include.
         exclude_domains: Blacklist of domains to exclude.
+        time_range: Filter by recency - hour, day, week, month, year.
         start_date: Filter results after date (YYYY-MM-DD or YYYY).
         end_date: Filter results before date (YYYY-MM-DD or YYYY).
         locale: Locale for results (default: en).
         country: Country code (default: US).
-        parsing_type: Content format - plain_text, markdown (default), simplified_html.
+        output_format: Content format - plain_text, markdown (default),
+            simplified_html.
     """
 
-    num_results: int = Field(default=3, ge=1, le=100, alias="k")
-    topic: str = "general"
+    max_results: int = Field(default=3, ge=1, le=100, alias="k")
+    focus: str = "general"
     deep_search: bool = True
     include_answer: bool = False
     include_domains: list[str] | None = None
     exclude_domains: list[str] | None = None
+    time_range: str | None = None
     start_date: str | None = None
     end_date: str | None = None
 
@@ -114,18 +126,19 @@ class NimbleSearchRetriever(_NimbleBaseRetriever):
     def _build_request_body(self, query: str, **kwargs: Any) -> dict[str, Any]:
         return SearchParams(
             query=query,
-            num_results=kwargs.get("num_results", kwargs.get("k", self.num_results)),
+            max_results=kwargs.get("max_results", kwargs.get("k", self.max_results)),
             locale=kwargs.get("locale", self.locale),
             country=kwargs.get("country", self.country),
-            parsing_type=kwargs.get("parsing_type", self.parsing_type),
-            topic=kwargs.get("topic", self.topic),
+            output_format=kwargs.get("output_format", self.output_format),
+            focus=kwargs.get("focus", self.focus),
             deep_search=kwargs.get("deep_search", self.deep_search),
             include_answer=kwargs.get("include_answer", self.include_answer),
             include_domains=self.include_domains,
             exclude_domains=self.exclude_domains,
+            time_range=self.time_range,
             start_date=self.start_date,
             end_date=self.end_date,
-        ).model_dump(exclude_none=True)
+        ).model_dump(exclude_none=True, by_alias=True)
 
 
 class NimbleExtractRetriever(_NimbleBaseRetriever):
@@ -138,8 +151,10 @@ class NimbleExtractRetriever(_NimbleBaseRetriever):
         base_url: Base URL for API (defaults to production endpoint).
         locale: Locale for results (default: en).
         country: Country code (default: US).
-        parsing_type: Content format - plain_text, markdown (default), simplified_html.
-        driver: Browser driver to use (default: vx6).
+        output_format: Content format - plain_text, markdown (default),
+            simplified_html.
+        driver: Browser driver to use (vx6, vx8, vx8-pro, vx10, vx10-pro, vx12,
+            vx12-pro). If not specified, API selects the most appropriate driver.
         wait: Optional delay in milliseconds for render flow.
 
     Example:
@@ -147,7 +162,7 @@ class NimbleExtractRetriever(_NimbleBaseRetriever):
         >>> docs = await retriever.ainvoke("https://example.com")
     """
 
-    driver: str = "vx6"
+    driver: BrowserlessDriver | None = None
     wait: int | None = None
 
     def _get_endpoint(self) -> str:
@@ -158,7 +173,7 @@ class NimbleExtractRetriever(_NimbleBaseRetriever):
             links=[query],
             locale=kwargs.get("locale", self.locale),
             country=kwargs.get("country", self.country),
-            parsing_type=kwargs.get("parsing_type", self.parsing_type),
+            output_format=kwargs.get("output_format", self.output_format),
             driver=kwargs.get("driver", self.driver),
             wait=self.wait,
         ).model_dump(exclude_none=True)
