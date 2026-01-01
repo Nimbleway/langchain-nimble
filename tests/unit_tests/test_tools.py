@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from langchain_nimble import NimbleExtractTool, NimbleSearchTool
+from langchain_nimble import BrowserlessDriver, NimbleExtractTool, NimbleSearchTool
 
 
 def test_nimble_search_tool_init() -> None:
@@ -44,7 +44,7 @@ def test_nimble_search_tool_run_basic(mock_create_client: MagicMock) -> None:
                     "entity_type": "organic",
                     "country": "US",
                     "locale": "en",
-                }
+                },
             }
         ]
     }
@@ -81,7 +81,7 @@ async def test_nimble_search_tool_arun_basic(mock_create_client: MagicMock) -> N
                     "entity_type": "organic",
                     "country": "US",
                     "locale": "en",
-                }
+                },
             }
         ]
     }
@@ -430,7 +430,7 @@ def test_nimble_extract_tool_run_with_options(mock_create_client: MagicMock) -> 
     tool = NimbleExtractTool(api_key="test_key")
     result = tool._run(
         urls=["https://example.com"],
-        driver="vx6",
+        driver=BrowserlessDriver.VX6,
         wait=3000,
         locale="fr",
         country="FR",

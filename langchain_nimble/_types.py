@@ -67,8 +67,7 @@ class SearchParams(BaseParams):
         le=100,
         alias="num_results",
         description=(
-            "Maximum number of results to return (1-100). "
-            "Actual count may be less."
+            "Maximum number of results to return (1-100). Actual count may be less."
         ),
     )
     focus: SearchFocus = Field(
