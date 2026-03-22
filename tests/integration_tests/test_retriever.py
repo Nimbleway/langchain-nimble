@@ -22,9 +22,7 @@ def api_key() -> str:
 
 async def test_search_retriever_async_basic(api_key: str) -> None:
     """Test async search."""
-    retriever = NimbleSearchRetriever(
-        api_key=api_key, num_results=3, parsing_type="markdown"
-    )
+    retriever = NimbleSearchRetriever(api_key=api_key, k=3, output_format="markdown")
     documents = await retriever.ainvoke("LangChain framework")
 
     assert len(documents) > 0
@@ -50,7 +48,7 @@ async def test_extract_retriever_async_basic(api_key: str) -> None:
 
 async def test_search_retriever_async_invalid_api_key() -> None:
     """Test async error handling for invalid API key."""
-    retriever = NimbleSearchRetriever(api_key="invalid_key", num_results=1)
+    retriever = NimbleSearchRetriever(api_key="invalid_key", k=1)
 
     with pytest.raises(Exception):
         await retriever.ainvoke("test query")

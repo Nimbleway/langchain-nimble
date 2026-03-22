@@ -2,8 +2,8 @@
 
 from unittest.mock import Mock
 
-import httpx
 import pytest
+from nimble_python import APIConnectionError, APIStatusError, APITimeoutError
 
 from langchain_nimble._utilities import handle_api_errors
 
@@ -19,12 +19,12 @@ class TestErrorHandling:
         ):
             response = Mock()
             response.status_code = 401
-            response.text = "Unauthorized"
-            msg = "401 Unauthorized"
-            raise httpx.HTTPStatusError(
+            response.headers = {}
+            msg = "Unauthorized"
+            raise APIStatusError(
                 msg,
-                request=Mock(),
                 response=response,
+                body=None,
             )
 
     def test_server_error_5xx(self) -> None:
@@ -35,12 +35,12 @@ class TestErrorHandling:
         ):
             response = Mock()
             response.status_code = 503
-            response.text = "Service Unavailable"
-            msg = "503 Service Unavailable"
-            raise httpx.HTTPStatusError(
+            response.headers = {}
+            msg = "Service Unavailable"
+            raise APIStatusError(
                 msg,
-                request=Mock(),
                 response=response,
+                body=None,
             )
 
     def test_timeout_error(self) -> None:
@@ -49,8 +49,8 @@ class TestErrorHandling:
             pytest.raises(ValueError, match="timed out"),
             handle_api_errors("test operation"),
         ):
-            msg = "Request timeout"
-            raise httpx.TimeoutException(msg)
+            request = Mock()
+            raise APITimeoutError(request=request)
 
     def test_network_error(self) -> None:
         """Test network errors produce helpful messages."""
@@ -58,5 +58,5 @@ class TestErrorHandling:
             pytest.raises(ValueError, match="network error"),
             handle_api_errors("test operation"),
         ):
-            msg = "Connection failed"
-            raise httpx.RequestError(msg)
+            request = Mock()
+            raise APIConnectionError(request=request)

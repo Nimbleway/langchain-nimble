@@ -8,6 +8,7 @@ EXPECTED_ALL = [
     "NimbleExtractTool",
     "NimbleSearchRetriever",
     "NimbleSearchTool",
+    "SearchDepth",
     "__version__",
 ]
 
