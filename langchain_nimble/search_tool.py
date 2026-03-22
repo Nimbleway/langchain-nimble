@@ -46,12 +46,15 @@ class NimbleSearchToolInput(BaseModel):
         - "deep": Fetches and extracts full page content from each result.
           Takes longer (5-15 seconds) but returns complete article text.
           Ideal for in-depth research, analysis, and detailed answers.
+          **When using "deep", set max_results to 5 or less** to avoid
+          excessively long requests and too much data for the context window.
 
         **Use "deep" for:**
         - Research tasks requiring detailed information
         - Analysis or comparison of multiple sources
         - Questions needing full context
         - Content summarization or extraction tasks
+        - Always pair with max_results=5 or fewer
 
         **Use "lite" for:**
         - Quick fact checks or simple questions
