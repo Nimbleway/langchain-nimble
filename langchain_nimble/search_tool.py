@@ -202,6 +202,7 @@ class NimbleSearchTool(_NimbleClientMixin, BaseTool):
         "research, fact-checking, finding sources, or gathering information."
     )
     args_schema: type[BaseModel] = NimbleSearchToolInput
+    handle_tool_error: bool = True
 
     def _build_search_kwargs(
         self,

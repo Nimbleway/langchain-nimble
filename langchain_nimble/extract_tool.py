@@ -41,6 +41,7 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
         "Use after search to get full content from a specific page."
     )
     args_schema: type[BaseModel] = NimbleExtractToolInput
+    handle_tool_error: bool = True
 
     def _build_extract_kwargs(self, url: str) -> dict[str, Any]:
         """Build keyword arguments for SDK extract() call."""
