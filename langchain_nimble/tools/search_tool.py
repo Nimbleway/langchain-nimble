@@ -5,7 +5,7 @@ from typing import Any
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
-from ._utilities import _NimbleClientMixin, handle_api_errors
+from langchain_nimble._utilities import _NimbleClientMixin, handle_api_errors
 
 
 class NimbleSearchToolInput(BaseModel):

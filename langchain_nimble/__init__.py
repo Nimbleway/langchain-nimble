@@ -3,9 +3,17 @@
 from importlib import metadata
 
 from langchain_nimble._types import BrowserlessDriver, SearchDepth
-from langchain_nimble.extract_tool import NimbleExtractTool
 from langchain_nimble.retrievers import NimbleExtractRetriever, NimbleSearchRetriever
-from langchain_nimble.search_tool import NimbleSearchTool
+from langchain_nimble.toolkit import NimbleToolkit
+from langchain_nimble.tools.agent_tool import (
+    NimbleAgentGetTool,
+    NimbleAgentListTool,
+    NimbleAgentRunTool,
+)
+from langchain_nimble.tools.crawl_tool import NimbleCrawlTool
+from langchain_nimble.tools.extract_tool import NimbleExtractTool
+from langchain_nimble.tools.map_tool import NimbleMapTool
+from langchain_nimble.tools.search_tool import NimbleSearchTool
 
 try:
     __version__ = metadata.version(__package__)
@@ -16,10 +24,16 @@ del metadata  # optional, avoids polluting the results of dir(__package__)
 
 __all__ = [
     "BrowserlessDriver",
+    "NimbleAgentGetTool",
+    "NimbleAgentListTool",
+    "NimbleAgentRunTool",
+    "NimbleCrawlTool",
     "NimbleExtractRetriever",
     "NimbleExtractTool",
+    "NimbleMapTool",
     "NimbleSearchRetriever",
     "NimbleSearchTool",
+    "NimbleToolkit",
     "SearchDepth",
     "__version__",
 ]
