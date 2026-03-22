@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 
+from langchain_core.tools import ToolException
 from langchain_core.utils import secret_from_env
 from nimble_python import APIConnectionError as NimbleConnectionError
 from nimble_python import APIStatusError as NimbleStatusError
@@ -66,7 +67,7 @@ class _NimbleClientMixin(BaseModel):
 
 @contextmanager
 def handle_api_errors(operation: str = "API request") -> Iterator[None]:
-    """Convert Nimble SDK exceptions to user-friendly error messages."""
+    """Convert Nimble SDK exceptions to ToolException for graceful agent handling."""
     try:
         yield
     except NimbleStatusError as e:
@@ -81,10 +82,10 @@ def handle_api_errors(operation: str = "API request") -> Iterator[None]:
                 f"Nimble API {operation} failed with server error ({status}): "
                 f"{e.message}"
             )
-        raise ValueError(msg) from e
+        raise ToolException(msg) from e
     except NimbleTimeoutError as e:
         msg = f"Nimble API {operation} timed out: {e.message}"
-        raise ValueError(msg) from e
+        raise ToolException(msg) from e
     except NimbleConnectionError as e:
         msg = f"Nimble API {operation} failed with network error: {e.message}"
-        raise ValueError(msg) from e
+        raise ToolException(msg) from e
