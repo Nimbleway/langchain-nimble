@@ -15,7 +15,7 @@ from nimble_python.types.search_response import (
 )
 from pydantic import Field
 
-from ._types import OUTPUT_FORMAT_TO_SDK_FORMATS, BrowserlessDriver
+from ._types import BrowserlessDriver
 from ._utilities import _NimbleClientMixin, handle_api_errors
 
 
@@ -99,8 +99,20 @@ class NimbleSearchRetriever(_NimbleClientMixin, BaseRetriever):
     """
 
     max_results: int = Field(default=3, ge=1, le=100, alias="k")
-    focus: str = "general"
-    search_depth: str = "lite"
+    focus: str = Field(
+        default="general",
+        description=(
+            "Search focus mode: general, news, location, shopping, geo, social."
+        ),
+    )
+    search_depth: str = Field(
+        default="lite",
+        description=(
+            "Search depth level: lite (metadata only, default), "
+            "fast (rich content at low latency, Enterprise only), "
+            "deep (full page content extraction)."
+        ),
+    )
     include_answer: bool = False
     include_domains: list[str] | None = None
     exclude_domains: list[str] | None = None
@@ -199,12 +211,11 @@ class NimbleExtractRetriever(_NimbleClientMixin, BaseRetriever):
 
     def _build_extract_kwargs(self, query: str, **kwargs: Any) -> dict[str, Any]:
         """Build keyword arguments for SDK extract() call."""
-        fmt = kwargs.get("output_format", self.output_format)
         extract_kwargs: dict[str, Any] = {
             "url": query,
             "locale": kwargs.get("locale", self.locale),
             "country": kwargs.get("country", self.country),
-            "formats": OUTPUT_FORMAT_TO_SDK_FORMATS.get(fmt, ["markdown"]),
+            "formats": ["markdown"],
         }
 
         driver = kwargs.get("driver", self.driver)
@@ -213,7 +224,8 @@ class NimbleExtractRetriever(_NimbleClientMixin, BaseRetriever):
 
         wait = kwargs.get("wait", self.wait)
         if wait is not None:
-            extract_kwargs["request_timeout"] = float(wait)
+            extract_kwargs["render"] = True
+            extract_kwargs["browser_actions"] = [{"wait": f"{wait}ms"}]
 
         return extract_kwargs
 

@@ -12,7 +12,13 @@ class NimbleExtractToolInput(BaseModel):
     """Input schema for NimbleExtractTool."""
 
     url: str = Field(
-        description="The URL to extract markdown content from.",
+        description="""The URL to extract markdown content from.
+
+        Accepts any publicly accessible URL. The tool fetches the page,
+        renders JavaScript if needed, and returns the content as markdown.
+
+        Use after nimble_search to get full content from a result URL.
+        """,
     )
 
 

@@ -12,9 +12,9 @@ from nimble_python.types.search_response import (
 from langchain_nimble import NimbleExtractTool, NimbleSearchTool
 
 
-def _mock_search_response(**overrides):  # type: ignore[no-untyped-def]
+def _mock_search_response(**overrides: object) -> SearchResponse:
     """Create a mock SearchResponse."""
-    defaults = {
+    defaults: dict[str, object] = {
         "request_id": "test-request-id",
         "results": [
             Result(
@@ -244,7 +244,7 @@ def test_nimble_search_tool_init_time(benchmark):  # type: ignore[no-untyped-def
 # ===========================================================
 
 
-def _mock_extract_sdk_response():  # type: ignore[no-untyped-def]
+def _mock_extract_sdk_response() -> MagicMock:
     """Create a mock SDK ExtractResponse with .data.markdown."""
     mock = MagicMock()
     mock.data.markdown = "# Page Title\n\nExtracted content"

@@ -30,13 +30,6 @@ class OutputFormat(str, Enum):
     SIMPLIFIED_HTML = "simplified_html"
 
 
-OUTPUT_FORMAT_TO_SDK_FORMATS: dict[str, list[str]] = {
-    "markdown": ["markdown"],
-    "plain_text": ["html"],
-    "simplified_html": ["html"],
-}
-
-
 class BrowserlessDriver(str, Enum):
     """Browserless drivers available for web extraction."""
 
