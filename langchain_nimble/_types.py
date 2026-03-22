@@ -15,7 +15,10 @@ class SearchFocus(str, Enum):
 
 
 class SearchDepth(str, Enum):
-    """Search depth level controlling content retrieval."""
+    """Search depth level controlling content retrieval.
+
+    Levels: lite (metadata only), fast (Enterprise), deep (full content).
+    """
 
     LITE = "lite"
     FAST = "fast"
