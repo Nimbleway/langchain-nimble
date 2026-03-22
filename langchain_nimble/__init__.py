@@ -2,7 +2,7 @@
 
 from importlib import metadata
 
-from langchain_nimble._types import BrowserlessDriver
+from langchain_nimble._types import BrowserlessDriver, SearchDepth
 from langchain_nimble.extract_tool import NimbleExtractTool
 from langchain_nimble.retrievers import NimbleExtractRetriever, NimbleSearchRetriever
 from langchain_nimble.search_tool import NimbleSearchTool
@@ -20,5 +20,6 @@ __all__ = [
     "NimbleExtractTool",
     "NimbleSearchRetriever",
     "NimbleSearchTool",
+    "SearchDepth",
     "__version__",
 ]

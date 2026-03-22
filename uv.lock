@@ -516,8 +516,8 @@ name = "langchain-nimble"
 version = "2.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "httpx" },
     { name = "langchain-core" },
+    { name = "nimble-python" },
 ]
 
 [package.dev-dependencies]
@@ -551,8 +551,8 @@ typing = [
 
 [package.metadata]
 requires-dist = [
-    { name = "httpx", specifier = ">=0.28.1,<1.0.0" },
     { name = "langchain-core", specifier = ">=1.0.0,<2.0.0" },
+    { name = "nimble-python", specifier = ">=0.12.0,<1.0.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -963,6 +963,23 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a2/6e/371856a3fb9d31ca8dac321cda606860fa4548858c0cc45d9d1d4ca2628b/mypy_extensions-1.1.0.tar.gz", hash = "sha256:52e68efc3284861e772bbcd66823fde5ae21fd2fdb51c62a211403730b916558", size = 6343, upload-time = "2025-04-22T14:54:24.164Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/79/7b/2c79738432f5c924bef5071f933bcc9efd0473bac3b4aa584a6f7c1c8df8/mypy_extensions-1.1.0-py3-none-any.whl", hash = "sha256:1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505", size = 4963, upload-time = "2025-04-22T14:54:22.983Z" },
+]
+
+[[package]]
+name = "nimble-python"
+version = "0.12.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2d/78/6d5ffe17be0f5daefba245d13fd5f54786c97c65ffad0c1f46f59feef9d3/nimble_python-0.12.0.tar.gz", hash = "sha256:cc60a18652bdabf5129eaa2586e73a65dd1be26e9e8ec7f7ac5e28fdf49855a5", size = 271217, upload-time = "2026-03-18T12:42:53.467Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/32/b2/f05997d598115b7f7c7b23a8386c938c26cb1331fa1812c7872944ef2478/nimble_python-0.12.0-py3-none-any.whl", hash = "sha256:89b5689efa52ff5f52e578b7e360d01a0303a5610d412004e2b8e0f1f8dbd9be", size = 160081, upload-time = "2026-03-18T12:42:54.766Z" },
 ]
 
 [[package]]

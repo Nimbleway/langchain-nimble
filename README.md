@@ -6,12 +6,12 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-langchain-nimble provides powerful web search and content extraction capabilities for LangChain applications. Built on Nimble's production-tested API, it offers both retrievers and tools for seamless integration with LangChain agents and chains.
+langchain-nimble provides powerful web search and content extraction capabilities for LangChain applications. Built on the official [Nimble Python SDK](https://pypi.org/project/nimble_python/), it offers both retrievers and tools for seamless integration with LangChain agents and chains.
 
 ## Features
 
 - ✨ **Dual Interface**: Retrievers for chains, Tools for agents
-- 🔍 **Deep Search Mode**: Full page content extraction, not just snippets
+- 🔍 **Search Depth Levels**: lite (metadata), fast (Enterprise), deep (full content)
 - 🤖 **LLM Answers**: Optional AI-generated answer summaries
 - 🎯 **Focus Modes**: Specialized search (general, news, location, shopping, geo, social)
 - 🛍️ **AI-Powered WSA**: Web Search Agents for shopping, geo, and social media
@@ -19,8 +19,8 @@ langchain-nimble provides powerful web search and content extraction capabilitie
 - 📅 **Date Filtering**: Search by specific date ranges
 - 🌐 **Domain Control**: Include/exclude specific domains
 - ⚡ **Full Async Support**: Both sync and async implementations
-- 🔄 **Smart Retry Logic**: Automatic retry with exponential backoff
-- 📊 **Multiple Formats**: Plain text, Markdown (default), or HTML output
+- 🔄 **Smart Retry Logic**: Built-in retry via Nimble SDK
+- 📊 **Markdown Output**: Clean markdown content from any page
 
 ## Installation
 
@@ -68,10 +68,10 @@ Retrievers return LangChain `Document` objects, ideal for RAG pipelines and chai
 ```python
 from langchain_nimble import NimbleSearchRetriever
 
-# Fast search - returns metadata only
+# Lite search - returns metadata only (default)
 retriever = NimbleSearchRetriever(
     max_results=5,
-    deep_search=False  # Fast, metadata only
+    search_depth="lite"
 )
 docs = retriever.invoke("Python best practices 2024")
 ```
@@ -83,7 +83,7 @@ Fetch full page content from each result:
 ```python
 retriever = NimbleSearchRetriever(
     max_results=3,
-    deep_search=True  # Full page content
+    search_depth="deep"  # Full page content extraction
 )
 docs = retriever.invoke("comprehensive guide to FastAPI")
 ```
@@ -119,12 +119,11 @@ shopping_retriever = NimbleSearchRetriever(focus="shopping")  # AI-powered WSA
 
 #### LLM Answer Generation
 
-Get AI-generated answers (only with `deep_search=False`):
+Get AI-generated answers:
 
 ```python
 retriever = NimbleSearchRetriever(
     max_results=5,
-    deep_search=False,
     include_answer=True
 )
 docs = retriever.invoke("What is the capital of France?")
@@ -144,11 +143,10 @@ from langchain_nimble import NimbleExtractRetriever
 retriever = NimbleExtractRetriever()
 docs = retriever.invoke("https://www.python.org/about/")
 
-# Advanced options
+# With render wait for dynamic content
 retriever = NimbleExtractRetriever(
     driver="vx8",      # Optional: vx6, vx8, vx8-pro, vx10, vx10-pro, vx12, vx12-pro
-    wait=3000,         # Wait for dynamic content (ms)
-    output_format="markdown"  # plain_text, markdown (default), simplified_html
+    wait=3000,         # Wait for dynamic content (ms) - uses browser_actions
 )
 ```
 
@@ -165,7 +163,7 @@ from langchain.agents import create_agent
 # Create agent with search tool
 search_tool = NimbleSearchTool()
 agent = create_agent(
-    model="gpt-4o",
+    model="claude-haiku-4-5",
     tools=[search_tool]
 )
 
@@ -182,20 +180,9 @@ from langchain_nimble import NimbleExtractTool
 
 extract_tool = NimbleExtractTool()
 
-# Extract single or multiple URLs
+# Extract a URL - returns markdown string
 result = extract_tool.invoke({
-    "urls": ["https://www.langchain.com/"]
-})
-
-# Batch extraction (up to 20 URLs)
-result = extract_tool.invoke({
-    "urls": [
-        "https://docs.python.org/3/",
-        "https://www.langchain.com/",
-        "https://www.anthropic.com/"
-    ],
-    "driver": "vx8",
-    "wait": 5000
+    "url": "https://www.langchain.com/"
 })
 ```
 
@@ -209,7 +196,7 @@ search_tool = NimbleSearchTool()
 extract_tool = NimbleExtractTool()
 
 agent = create_agent(
-    model="gpt-4o",
+    model="claude-haiku-4-5",
     tools=[search_tool, extract_tool]
 )
 
@@ -228,8 +215,8 @@ response = agent.invoke({
 | `api_key` | `str \| None` | `None` | API key (or set `NIMBLE_API_KEY`) |
 | `max_results` | `int` | `3` / `10`* | Number of results (1-100). Alias: `num_results` |
 | `focus` | `str` | `"general"` | Search focus mode |
-| `deep_search` | `bool` | `True` / `False`* | Full content vs. metadata only |
-| `include_answer` | `bool` | `False` | LLM answer (requires `deep_search=False`) |
+| `search_depth` | `str` | `"lite"` | Search depth: lite, fast (Enterprise), deep |
+| `include_answer` | `bool` | `False` | LLM answer summary |
 | `time_range` | `str` | `None` | Recency filter - hour, day, week, month, year |
 | `include_domains` | `list[str]` | `None` | Domain whitelist |
 | `exclude_domains` | `list[str]` | `None` | Domain blacklist |
@@ -237,20 +224,22 @@ response = agent.invoke({
 | `end_date` | `str` | `None` | Filter before date (YYYY-MM-DD or YYYY) |
 | `locale` | `str` | `"en"` | Language/locale (e.g., `fr`, `es`) |
 | `country` | `str` | `"US"` | Country code (e.g., `UK`, `FR`) |
-| `output_format` | `str` | `"markdown"` | Content format - plain_text, markdown, simplified_html |
 
-\* Defaults differ: Retriever uses `max_results=3, deep_search=True`; Tool uses `max_results=10, deep_search=False`
+\* Defaults differ: Retriever uses `max_results=3, search_depth="lite"`; Tool uses `max_results=10, search_depth="lite"`
 
-### Extract Parameters (NimbleExtractRetriever & NimbleExtractTool)
+### Extract Parameters (NimbleExtractRetriever)
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `api_key` | `str \| None` | `None` | API key (or set `NIMBLE_API_KEY`) |
-| `driver` | `str \| None` | `None` | Optional driver: vx6, vx8, vx8-pro, vx10, vx10-pro, vx12, vx12-pro. API auto-selects if not specified. |
-| `wait` | `int \| None` | `None` | Wait before extraction (milliseconds) |
+| `driver` | `str \| None` | `None` | Browser driver: vx6, vx8, vx8-pro, vx10, vx10-pro, vx12, vx12-pro |
+| `wait` | `int \| None` | `None` | Render wait in milliseconds (uses browser_actions) |
 | `locale` | `str` | `"en"` | Language/locale |
 | `country` | `str` | `"US"` | Country code |
-| `output_format` | `str` | `"markdown"` | Content format - plain_text, markdown, simplified_html |
+
+### NimbleExtractTool
+
+The extract tool accepts a single `url` parameter and returns the page content as a markdown string.
 
 ## Response Formats
 
@@ -269,7 +258,7 @@ Document(
 )
 ```
 
-### Tool Response (JSON)
+### Search Tool Response (JSON)
 
 ```python
 {
@@ -288,19 +277,26 @@ Document(
 }
 ```
 
+### Extract Tool Response (String)
+
+The extract tool returns a markdown string directly.
+
 ## Best Practices
 
-### Deep Search vs. Regular Search
+### Search Depth Levels
 
-**Use `deep_search=True` for:**
+**Use `search_depth="deep"` for:**
 - RAG applications needing full context
 - Content analysis and summarization
 - In-depth research tasks
 
-**Use `deep_search=False` for:**
-- Quick lookups (5-10x faster)
+**Use `search_depth="lite"` (default) for:**
+- Quick lookups
 - Getting lists of URLs
 - When you'll extract specific URLs later
+
+**Use `search_depth="fast"` for (Enterprise only):**
+- Production workloads needing rich content at low latency
 
 ### Tools vs. Retrievers
 
@@ -317,29 +313,25 @@ Document(
 
 ### Error Handling
 
-Automatic retry with exponential backoff for 5xx errors. For custom handling:
+The SDK handles retries automatically. For custom error handling:
 
 ```python
-import httpx
 from langchain_nimble import NimbleSearchRetriever
 
 retriever = NimbleSearchRetriever()
 
 try:
     docs = retriever.invoke("query")
-except httpx.HTTPStatusError as e:
-    print(f"HTTP {e.response.status_code}")
-except httpx.RequestError as e:
-    print(f"Network error: {e}")
+except ValueError as e:
+    print(f"API error: {e}")
 ```
 
 ### Performance Tips
 
 1. Use async (`ainvoke`) for concurrent requests
-2. Batch URLs with `NimbleExtractTool` (up to 20)
-3. Request only needed results (`max_results`)
-4. Let API auto-select driver, or use lower driver levels (vx6/vx8) unless advanced rendering needed
-5. Avoid `wait` parameter for static content
+2. Request only needed results (`max_results`)
+3. Let API auto-select driver, or use lower driver levels (vx6/vx8) unless advanced rendering needed
+4. Avoid `wait` parameter for static content
 
 ## Examples & Documentation
 
@@ -366,7 +358,3 @@ Contributions welcome! Please submit Pull Requests.
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
-
----
-
-Built with ❤️ by the Nimbleway team

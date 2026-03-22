@@ -3,9 +3,8 @@
 from typing import Any
 
 from langchain_core.tools import BaseTool
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
-from ._types import SearchParams
 from ._utilities import _NimbleClientMixin, handle_api_errors
 
 
@@ -34,30 +33,30 @@ class NimbleSearchToolInput(BaseModel):
         - Use 50+ for comprehensive research or when you need diverse sources
         """,
     )
-    deep_search: bool = Field(
-        default=False,
-        description="""Enable deep search mode for comprehensive research.
+    search_depth: str = Field(
+        default="lite",
+        description="""Search depth level controlling content retrieval.
 
-        **When enabled (True):**
-        - Fetches and extracts full page content from each search result
-        - Returns rich, detailed information including complete article text
-        - Takes longer to execute (typically 5-15 seconds)
-        - Ideal for in-depth research, analysis, and detailed answers
-        - Provides context needed for comprehensive understanding
+        **Available levels:**
+        - "lite": Returns only metadata (title, description, URL, position).
+          Default option, ideal for quick lookups or getting links.
+        - "fast": Returns rich content at low latency. Best balance of
+          depth and speed for production workloads.
+          **Note: "fast" is a premium feature available on Enterprise plans.**
+        - "deep": Fetches and extracts full page content from each result.
+          Takes longer (5-15 seconds) but returns complete article text.
+          Ideal for in-depth research, analysis, and detailed answers.
+          **When using "deep", set max_results to 5 or less** to avoid
+          excessively long requests and too much data for the context window.
 
-        **When disabled (False):**
-        - Returns only metadata: title, description, URL, and position
-        - Executes quickly (typically 1-3 seconds)
-        - Ideal for quick lookups, getting links, or simple fact-checking
-        - Requires follow-up extraction if full content is needed
-
-        **Use deep_search=True for:**
+        **Use "deep" for:**
         - Research tasks requiring detailed information
         - Analysis or comparison of multiple sources
         - Questions needing full context
         - Content summarization or extraction tasks
+        - Always pair with max_results=5 or fewer
 
-        **Use deep_search=False for:**
+        **Use "lite" for:**
         - Quick fact checks or simple questions
         - Getting a list of relevant URLs
         - Finding recent news or updates
@@ -68,12 +67,11 @@ class NimbleSearchToolInput(BaseModel):
         default=False,
         description="""Request an LLM-generated answer summary.
 
-        Only available when deep_search=False. When enabled, the API uses
-        an LLM to generate a direct answer to your query based on the search
-        results. This is useful for getting quick, synthesized answers without
-        processing results yourself.
+        When enabled, the API uses an LLM to generate a direct answer to
+        your query based on the search results. This is useful for getting
+        quick, synthesized answers without processing results yourself.
 
-        **Note:** Cannot be used together with deep_search=True.
+        Available with all search_depth levels.
         """,
     )
     focus: str = Field(
@@ -177,17 +175,6 @@ class NimbleSearchToolInput(BaseModel):
         """,
     )
 
-    @model_validator(mode="after")
-    def validate_deep_search_and_include_answer(self) -> "NimbleSearchToolInput":
-        """Validate that deep_search and include_answer are mutually exclusive."""
-        if self.deep_search and self.include_answer:
-            msg = (
-                "deep_search and include_answer cannot both be True. "
-                "include_answer is only available when deep_search=False."
-            )
-            raise ValueError(msg)
-        return self
-
 
 class NimbleSearchTool(_NimbleClientMixin, BaseTool):
     """Search the web using Nimble's Search API.
@@ -204,27 +191,28 @@ class NimbleSearchTool(_NimbleClientMixin, BaseTool):
 
     Args:
         api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
-        base_url: Base URL for API (defaults to production endpoint).
+        base_url: Override base URL for the Nimble API.
         max_retries: Maximum retry attempts for 5xx errors (default: 2).
         locale: Locale for results (default: en).
         country: Country code (default: US).
         output_format: Content format - plain_text, markdown (default), simplified_html.
     """
 
-    name: str = "nimble_web_search"
+    name: str = "nimble_search"
     description: str = (
         "Search the web for current information. Returns search results with "
         "titles, URLs, descriptions, and optionally full page content. Use for "
         "research, fact-checking, finding sources, or gathering information."
     )
     args_schema: type[BaseModel] = NimbleSearchToolInput
+    handle_tool_error: bool = True
 
-    def _build_request_body(
+    def _build_search_kwargs(
         self,
         query: str,
         max_results: int,
         *,
-        deep_search: bool,
+        search_depth: str,
         include_answer: bool,
         focus: str,
         time_range: str | None,
@@ -236,29 +224,38 @@ class NimbleSearchTool(_NimbleClientMixin, BaseTool):
         country: str | None,
         output_format: str | None,
     ) -> dict[str, Any]:
-        """Build search request body."""
-        return SearchParams(
-            query=query,
-            max_results=max_results,
-            locale=locale or self.locale,
-            country=country or self.country,
-            output_format=output_format or self.output_format,
-            focus=focus,
-            deep_search=deep_search,
-            include_answer=include_answer,
-            time_range=time_range,
-            include_domains=include_domains,
-            exclude_domains=exclude_domains,
-            start_date=start_date,
-            end_date=end_date,
-        ).model_dump(exclude_none=True, by_alias=True)
+        """Build keyword arguments for SDK search() call."""
+        kwargs: dict[str, Any] = {
+            "query": query,
+            "max_results": max_results,
+            "locale": locale or self.locale,
+            "country": country or self.country,
+            "output_format": output_format or self.output_format,
+            "focus": focus,
+            "search_depth": search_depth,
+        }
+
+        if include_answer:
+            kwargs["include_answer"] = include_answer
+        if time_range is not None:
+            kwargs["time_range"] = time_range
+        if include_domains is not None:
+            kwargs["include_domains"] = include_domains
+        if exclude_domains is not None:
+            kwargs["exclude_domains"] = exclude_domains
+        if start_date is not None:
+            kwargs["start_date"] = start_date
+        if end_date is not None:
+            kwargs["end_date"] = end_date
+
+        return kwargs
 
     def _run(
         self,
         query: str,
         max_results: int = 10,
         *,
-        deep_search: bool = False,
+        search_depth: str = "lite",
         include_answer: bool = False,
         focus: str = "general",
         time_range: str | None = None,
@@ -275,10 +272,10 @@ class NimbleSearchTool(_NimbleClientMixin, BaseTool):
             msg = "Sync client not initialized"
             raise RuntimeError(msg)
 
-        request_body = self._build_request_body(
+        search_kwargs = self._build_search_kwargs(
             query=query,
             max_results=max_results,
-            deep_search=deep_search,
+            search_depth=search_depth,
             include_answer=include_answer,
             focus=focus,
             time_range=time_range,
@@ -292,16 +289,15 @@ class NimbleSearchTool(_NimbleClientMixin, BaseTool):
         )
 
         with handle_api_errors(operation="search"):
-            response = self._sync_client.post("/search", json=request_body)
-            response.raise_for_status()
-            return response.json()
+            response = self._sync_client.search(**search_kwargs)
+            return response.model_dump()
 
     async def _arun(
         self,
         query: str,
         max_results: int = 10,
         *,
-        deep_search: bool = False,
+        search_depth: str = "lite",
         include_answer: bool = False,
         focus: str = "general",
         time_range: str | None = None,
@@ -318,10 +314,10 @@ class NimbleSearchTool(_NimbleClientMixin, BaseTool):
             msg = "Async client not initialized"
             raise RuntimeError(msg)
 
-        request_body = self._build_request_body(
+        search_kwargs = self._build_search_kwargs(
             query=query,
             max_results=max_results,
-            deep_search=deep_search,
+            search_depth=search_depth,
             include_answer=include_answer,
             focus=focus,
             time_range=time_range,
@@ -335,6 +331,5 @@ class NimbleSearchTool(_NimbleClientMixin, BaseTool):
         )
 
         with handle_api_errors(operation="search"):
-            response = await self._async_client.post("/search", json=request_body)
-            response.raise_for_status()
-            return response.json()
+            response = await self._async_client.search(**search_kwargs)
+            return response.model_dump()
