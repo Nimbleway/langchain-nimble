@@ -7,7 +7,7 @@ Project-specific context and patterns for working on langchain-nimble.
 ## Tech Stack
 
 - **Python:** 3.10+ (using modern union syntax: `str | None`)
-- **HTTP Client:** httpx (sync + async)
+- **HTTP Client:** nimble_python SDK (wraps httpx internally)
 - **Framework:** LangChain Core (retrievers, tools, documents)
 - **Validation:** Pydantic v2 models
 - **Testing:** pytest, pytest-asyncio, pytest-mock, syrupy, freezegun, langchain-tests
@@ -19,10 +19,16 @@ Project-specific context and patterns for working on langchain-nimble.
 
 ```
 langchain_nimble/
-├── retrievers.py          # NimbleSearchRetriever - main retriever class
-├── tools.py               # NimbleSearch, NimbleExtract - LangChain tools for agents
-├── _utilities.py          # Client creation, API key handling (private)
-├── _types.py              # Shared Pydantic models and type definitions (private)
+├── retrievers.py          # NimbleSearchRetriever, NimbleExtractRetriever
+├── toolkit.py             # NimbleToolkit (BaseToolkit) - groups all tools
+├── tools/                 # LangChain tools package
+│   ├── search_tool.py     # NimbleSearchTool
+│   ├── extract_tool.py    # NimbleExtractTool
+│   ├── map_tool.py        # NimbleMapTool
+│   ├── crawl_tool.py      # NimbleCrawlTool (async with polling)
+│   └── agent_tool.py      # NimbleAgentListTool, NimbleAgentGetTool, NimbleAgentRunTool
+├── _utilities.py          # _NimbleClientMixin, handle_api_errors (private)
+├── _types.py              # Shared enums: SearchDepth, SearchFocus, etc. (private)
 └── __init__.py            # Public exports
 
 tests/
@@ -67,23 +73,32 @@ uv run ruff format .
 
 ### Async-First Design
 - All HTTP operations support both sync and async
-- Use `httpx.Client` for sync, `httpx.AsyncClient` for async
+- Use `nimble_python.Nimble` for sync, `nimble_python.AsyncNimble` for async
 - Implement both `_get_relevant_documents()` and `_aget_relevant_documents()`
+- For tools: implement both `_run()` and `_arun()`
 
 ### Client Initialization
 - Clients initialized once in `@model_validator(mode="after")`
 - Reuse clients across requests (connection pooling)
-- Use utilities from `_utilities.py`: `create_sync_client()`, `create_async_client()`
-
-### API Key Handling
-- Support both parameter (`api_key="..."`) and environment variable (`NIMBLE_API_KEY`)
-- Use `SecretStr` from Pydantic for API keys
-- Utility: `get_api_key()` in `_utilities.py`
+- All tools/retrievers extend `_NimbleClientMixin` from `_utilities.py`
 
 ### Error Handling
-- Retry on 5xx errors only (use `tenacity`)
-- Never retry 4xx errors (client issues)
-- Exponential backoff: 2s, 4s, 8s
+- SDK handles retries on 5xx (configured via `max_retries` on client)
+- `handle_api_errors()` context manager converts SDK exceptions to `ToolException`
+- Raise `ToolException` (not `ValueError`) for graceful agent error handling
+
+### Tool Patterns
+- All tools extend `_NimbleClientMixin, BaseTool` and define `args_schema`, `handle_tool_error = True`
+- Each tool has `_build_*_kwargs()` to construct SDK call params, `_run()` sync, `_arun()` async
+- For async SDK operations (crawl): use poll-inside-the-tool with `time.monotonic()` deadline
+- NimbleToolkit groups tools with `include_*` flags; `get_tools()` returns `list[BaseTool]`
+- Agent API requires 3 tools (list→get→run) for proper LLM agent workflow
+
+### Nimble SDK Introspection
+- Inspect SDK methods: `uv run python -c "from nimble_python import Nimble; import inspect; print(inspect.signature(Nimble(api_key='x').search))"`
+- Inspect response types: `uv run python -c "from nimble_python.types import SearchResponse; print(SearchResponse.model_fields)"`
+- SDK APIs: `search()`, `extract()`, `map()` are synchronous; `crawl.run()` is async (needs polling via `crawl.status()`)
+- `agent.run()` is synchronous despite the name — returns data immediately
 
 ---
 
@@ -166,8 +181,8 @@ import httpx
 from langchain_core.documents import Document
 from pydantic import BaseModel, Field, SecretStr
 
-# Local
-from ._utilities import create_async_client, get_api_key
+# Local (use absolute imports — ruff TID252 forbids relative parent imports)
+from langchain_nimble._utilities import _NimbleClientMixin, handle_api_errors
 ```
 
 ### Docstring Requirements

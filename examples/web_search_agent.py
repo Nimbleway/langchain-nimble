@@ -1,7 +1,7 @@
-"""Async multi-tool agent example using NimbleSearchTool and NimbleExtractTool.
+"""Async multi-tool agent example using NimbleToolkit.
 
-This example demonstrates how to create an agent that can both search the web
-and extract content from specific URLs using Nimble's API.
+This example demonstrates how to create an agent with all Nimble tools
+loaded via the NimbleToolkit.
 
 Requirements:
     pip install langchain-nimble langchain langchain-anthropic
@@ -27,7 +27,7 @@ from typing import Any
 from dotenv import load_dotenv
 from langchain.agents import create_agent
 
-from langchain_nimble import NimbleExtractTool, NimbleSearchTool
+from langchain_nimble import NimbleToolkit
 
 # Load environment variables from .env file
 load_dotenv()
@@ -54,22 +54,32 @@ async def main() -> None:
         msg = "NIMBLE_API_KEY environment variable is required"
         raise ValueError(msg)
 
-    # Create both search and extract tools
-    search_tool = NimbleSearchTool()
-    extract_tool = NimbleExtractTool()
+    # Create all Nimble tools via the toolkit
+    toolkit = NimbleToolkit(
+        include_crawl=True,
+        include_map=True,
+        include_agent=True,
+    )
+    tools = toolkit.get_tools()
 
-    # Create agent with system prompt and both tools
+    # Create agent with system prompt and all tools
     # Using Claude Haiku 4.5 for fast, cost-effective performance
     agent: Any = create_agent(
         model="claude-haiku-4-5",
-        tools=[search_tool, extract_tool],
+        tools=tools,
         system_prompt=(
-            "You are a helpful assistant with access to real-time web "
-            "information. You can search the web and extract content from "
-            "specific URLs. Use the search tool to find relevant information, "
-            "then use the extract tool to get detailed content from specific "
-            "pages when needed. Always cite your sources and provide "
-            "comprehensive, accurate answers."
+            "You are a helpful assistant with access to Nimble's web data tools.\n\n"
+            "Available tools:\n"
+            "- nimble_search: Search the web for information\n"
+            "- nimble_extract: Extract full content from a URL as markdown\n"
+            "- nimble_map: Discover all URLs on a website\n"
+            "- nimble_crawl: Crawl a website to extract multiple pages\n"
+            "- nimble_agent_list: List available Nimble agent templates\n"
+            "- nimble_agent_get: Get an agent's required parameters\n"
+            "- nimble_agent_run: Run an agent for structured data extraction\n\n"
+            "For agents: use nimble_agent_list to discover agents, "
+            "nimble_agent_get to check required params, then nimble_agent_run.\n\n"
+            "Always cite your sources and provide comprehensive, accurate answers."
         ),
     )
 
@@ -77,7 +87,7 @@ async def main() -> None:
     if args.question:
         queries = [args.question]
     else:
-        # Example queries demonstrating both tools
+        # Example queries demonstrating various tools
         queries = [
             "What are the latest developments in artificial intelligence?",
             (
@@ -85,13 +95,14 @@ async def main() -> None:
                 "the key new features"
             ),
             (
-                "Search for the LangChain documentation and extract the main "
-                "concepts from the homepage"
+                "List the available Nimble agents and show me what parameters "
+                "the amazon_pdp agent requires"
             ),
         ]
 
     print("=" * 80)
-    print("Multi-Tool Web Agent Example (Search + Extract)")
+    print("Nimble Toolkit Agent Example")
+    print(f"Tools loaded: {', '.join(t.name for t in tools)}")
     print("=" * 80)
 
     # Run the agent with example queries

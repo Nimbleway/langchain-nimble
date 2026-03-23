@@ -191,7 +191,7 @@ async def test_nimble_search_tool_ainvoke() -> None:
 
 def test_nimble_search_tool_input_validation() -> None:
     """Test NimbleSearchToolInput validation."""
-    from langchain_nimble.search_tool import NimbleSearchToolInput
+    from langchain_nimble.tools.search_tool import NimbleSearchToolInput
 
     # Valid input with max_results
     valid_input = NimbleSearchToolInput(query="test", max_results=10)
@@ -216,7 +216,7 @@ def test_nimble_search_tool_input_validation() -> None:
 
 def test_nimble_search_tool_backward_compatibility() -> None:
     """Test that num_results alias still works."""
-    from langchain_nimble.search_tool import NimbleSearchToolInput
+    from langchain_nimble.tools.search_tool import NimbleSearchToolInput
 
     # num_results alias should still work
     input_with_alias = NimbleSearchToolInput(query="test", num_results=5)
@@ -348,7 +348,7 @@ def test_nimble_extract_tool_empty_response() -> None:
 
 def test_nimble_extract_tool_input_validation() -> None:
     """Test NimbleExtractToolInput validation."""
-    from langchain_nimble.extract_tool import NimbleExtractToolInput
+    from langchain_nimble.tools.extract_tool import NimbleExtractToolInput
 
     valid_input = NimbleExtractToolInput(url="https://example.com")
     assert valid_input.url == "https://example.com"
