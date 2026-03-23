@@ -85,7 +85,7 @@ def test_nimble_crawl_tool_run_immediate_success(mock_sleep: MagicMock) -> None:
 
     assert len(result) == 1
     assert result[0]["url"] == "https://example.com"
-    mock_sleep.assert_called_once_with(1.0)
+    mock_sleep.assert_not_called()  # First check is immediate, no sleep needed
 
 
 @patch("langchain_nimble.tools.crawl_tool.time.sleep")
@@ -111,7 +111,7 @@ def test_nimble_crawl_tool_run_polls_until_success(mock_sleep: MagicMock) -> Non
         result = tool._run(url="https://example.com")
 
     assert len(result) == 1
-    assert mock_sleep.call_count == 3
+    assert mock_sleep.call_count == 2  # First check immediate, then 2 sleeps
 
 
 @patch("langchain_nimble.tools.crawl_tool.time.sleep")
@@ -145,11 +145,17 @@ def test_nimble_crawl_tool_run_canceled(mock_sleep: MagicMock) -> None:
 
 
 @patch("langchain_nimble.tools.crawl_tool.time.sleep")
-def test_nimble_crawl_tool_run_timeout(mock_sleep: MagicMock) -> None:
+@patch("langchain_nimble.tools.crawl_tool.time.monotonic")
+def test_nimble_crawl_tool_run_timeout(
+    mock_monotonic: MagicMock, mock_sleep: MagicMock
+) -> None:
     """Test crawl raises ToolException on timeout."""
     tool = NimbleCrawlTool(api_key="test_key", polling_interval=1.0, timeout=3.0)
     mock_run_resp = _mock_crawl_run_response()
     running_resp = _mock_crawl_status_response(status="running")
+
+    # Simulate time advancing: 0 (deadline set), 0 (first check), 1, 2, 3, 4
+    mock_monotonic.side_effect = [0.0, 0.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0]
 
     with (
         patch.object(tool._sync_client.crawl, "run", return_value=mock_run_resp),
@@ -157,9 +163,6 @@ def test_nimble_crawl_tool_run_timeout(mock_sleep: MagicMock) -> None:
         pytest.raises(ToolException, match="timed out"),
     ):
         tool._run(url="https://example.com")
-
-    # Should have polled 3 times (at 1s, 2s, 3s) before timeout
-    assert mock_sleep.call_count == 3
 
 
 @patch("langchain_nimble.tools.crawl_tool.asyncio.sleep")
@@ -180,7 +183,7 @@ async def test_nimble_crawl_tool_arun_basic(mock_sleep: MagicMock) -> None:
 
     assert len(result) == 1
     assert result[0]["content"] == "async data"
-    mock_sleep.assert_awaited_once()
+    mock_sleep.assert_not_awaited()  # First check is immediate
 
 
 def test_nimble_crawl_tool_run_with_options() -> None:

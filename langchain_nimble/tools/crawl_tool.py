@@ -165,10 +165,15 @@ class NimbleCrawlTool(_NimbleClientMixin, BaseTool):
             msg = "Sync client not initialized"
             raise RuntimeError(msg)
 
-        elapsed = 0.0
+        deadline = time.monotonic() + self.timeout
+        first = True
         while True:
-            time.sleep(self.polling_interval)
-            elapsed += self.polling_interval
+            if not first:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                time.sleep(min(self.polling_interval, remaining))
+            first = False
 
             with handle_api_errors(operation="crawl status"):
                 response = self._sync_client.crawl.status(crawl_id)
@@ -177,7 +182,7 @@ class NimbleCrawlTool(_NimbleClientMixin, BaseTool):
             if result is not None:
                 return result
 
-            if elapsed >= self.timeout:
+            if time.monotonic() >= deadline:
                 break
 
         msg = f"Crawl {crawl_id} timed out after {self.timeout}s"
@@ -189,10 +194,15 @@ class NimbleCrawlTool(_NimbleClientMixin, BaseTool):
             msg = "Async client not initialized"
             raise RuntimeError(msg)
 
-        elapsed = 0.0
+        deadline = time.monotonic() + self.timeout
+        first = True
         while True:
-            await asyncio.sleep(self.polling_interval)
-            elapsed += self.polling_interval
+            if not first:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                await asyncio.sleep(min(self.polling_interval, remaining))
+            first = False
 
             with handle_api_errors(operation="crawl status"):
                 response = await self._async_client.crawl.status(crawl_id)
@@ -201,7 +211,7 @@ class NimbleCrawlTool(_NimbleClientMixin, BaseTool):
             if result is not None:
                 return result
 
-            if elapsed >= self.timeout:
+            if time.monotonic() >= deadline:
                 break
 
         msg = f"Crawl {crawl_id} timed out after {self.timeout}s"
