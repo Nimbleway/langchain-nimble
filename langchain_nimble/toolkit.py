@@ -26,6 +26,7 @@ class NimbleToolkit(BaseToolkit):
     nimble_api_key: SecretStr = Field(
         alias="api_key",
         default_factory=secret_from_env("NIMBLE_API_KEY", default=""),
+        description="API key for Nimbleway (or set NIMBLE_API_KEY env var).",
     )
     nimble_api_url: str | None = Field(
         alias="base_url",
@@ -72,7 +73,11 @@ class NimbleToolkit(BaseToolkit):
     )
 
     def get_tools(self) -> list[BaseTool]:
-        """Get the selected Nimble tools."""
+        """Get the selected Nimble tools.
+
+        Returns:
+            List of BaseTool instances based on the enabled ``include_*`` flags.
+        """
         common_kwargs: dict[str, object] = {
             "api_key": self.nimble_api_key.get_secret_value(),
             "max_retries": self.max_retries,
