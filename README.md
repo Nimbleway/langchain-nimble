@@ -14,7 +14,8 @@ langchain-nimble provides powerful web search and content extraction capabilitie
 - 🔍 **Search Depth Levels**: lite (metadata), fast (Enterprise), deep (full content)
 - 🤖 **LLM Answers**: Optional AI-generated answer summaries
 - 🎯 **Focus Modes**: Specialized search (general, news, location, shopping, geo, social)
-- 🛍️ **AI-Powered WSA**: Web Search Agents for shopping, geo, and social media
+- 📋 **Extract Templates**: Structured site scraping (`nimble_extract_template_*`)
+- 🤖 **Agent API V2**: Resumable Web Search Agent research (`start` / `status` / `result`)
 - ⏰ **Time Range Filtering**: Quick recency filters (hour, day, week, month, year)
 - 📅 **Date Filtering**: Search by specific date ranges
 - 🌐 **Domain Control**: Include/exclude specific domains
@@ -184,6 +185,35 @@ extract_tool = NimbleExtractTool()
 result = extract_tool.invoke({
     "url": "https://www.langchain.com/"
 })
+```
+
+### Extract Templates (structured site scraping)
+
+Use when you need a named template (e.g. product pages) with structured params — distinct from URL markdown extract and from Agent API V2 research.
+
+```python
+from langchain_nimble import NimbleToolkit
+
+toolkit = NimbleToolkit(include_extract_templates=True)
+tools = toolkit.get_tools()
+# nimble_extract_template_list → get → run
+```
+
+Or import tools directly: `NimbleExtractTemplateListTool`, `NimbleExtractTemplateGetTool`, `NimbleExtractTemplateRunTool`.
+
+> **Deprecated:** `NimbleAgentListTool` / `Get` / `Run` (`nimble_agent_*`) are aliases that now wrap Extract Templates. Prefer the `nimble_extract_template_*` names. They do **not** call Agent API V2.
+
+### Agent API V2 (Web Search Agents / research)
+
+Resumable research agents. Start returns immediately with a run id; poll status and fetch result across turns (do not block inside one tool call).
+
+```python
+from langchain_nimble import NimbleToolkit
+
+toolkit = NimbleToolkit(include_agents=True)
+tools = toolkit.get_tools()
+# nimble_agents_list, nimble_agent_templates_list, nimble_agent_create,
+# nimble_agent_run_start, nimble_agent_run_status, nimble_agent_run_result
 ```
 
 ### Multi-Tool Agent

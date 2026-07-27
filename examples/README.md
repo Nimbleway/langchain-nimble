@@ -44,7 +44,7 @@ export ANTHROPIC_API_KEY="your-anthropic-api-key"
 
 ### Multi-Tool Web Agent (`web_search_agent.py`)
 
-An async example showing how to create an agent with both search and content extraction capabilities.
+An async example with Search, Extract, Map, Crawl, and **Extract Templates**.
 
 **Run:**
 ```bash
@@ -52,10 +52,17 @@ python examples/web_search_agent.py
 ```
 
 **Features:**
-- ✅ Uses Claude Haiku 4.5 (fast and cost-effective)
-- ✅ Async implementation for better performance
-- ✅ Multi-tool agent (NimbleSearchTool + NimbleExtractTool)
-- ✅ Custom system prompt for optimal behavior
-- ✅ Demonstrates search and extract workflows
-- ✅ Shows how to extract and display agent responses
+- Claude Haiku 4.5
+- Async multi-tool agent
+- Extract Templates workflow (`list` → `get` → `run`) for structured site scraping
 
+### Agent API V2 Research (`agent_api_v2.py`)
+
+Resumable Web Search Agent lifecycle: discover/create → `run_start` → `run_status` → `run_result`.
+
+**Run:**
+```bash
+python examples/agent_api_v2.py
+```
+
+This is distinct from Extract Templates — use it for multi-minute research agents, not one-shot structured scrapes.

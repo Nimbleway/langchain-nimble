@@ -515,7 +515,7 @@ wheels = [
 
 [[package]]
 name = "langchain-nimble"
-version = "3.0.0"
+version = "3.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "langchain-core" },
@@ -554,7 +554,7 @@ typing = [
 [package.metadata]
 requires-dist = [
     { name = "langchain-core", specifier = ">=1.2.5,<2.0.0" },
-    { name = "nimble-python", specifier = ">=0.12.0,<1.0.0" },
+    { name = "nimble-python", specifier = ">=1.0.0,<2.0.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -981,7 +981,7 @@ wheels = [
 
 [[package]]
 name = "nimble-python"
-version = "0.12.0"
+version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -991,9 +991,9 @@ dependencies = [
     { name = "sniffio" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2d/78/6d5ffe17be0f5daefba245d13fd5f54786c97c65ffad0c1f46f59feef9d3/nimble_python-0.12.0.tar.gz", hash = "sha256:cc60a18652bdabf5129eaa2586e73a65dd1be26e9e8ec7f7ac5e28fdf49855a5", size = 271217, upload-time = "2026-03-18T12:42:53.467Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7f/70/b64449e47ba0998ff4ef29ca53149b819b7fe58fefe0e59cb3589da4cfbf/nimble_python-1.1.0.tar.gz", hash = "sha256:1560b706b23e85c98833afcf1fab955e185f28f143f97b387589c1d72054470c", size = 322741, upload-time = "2026-07-21T19:17:43.372Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/32/b2/f05997d598115b7f7c7b23a8386c938c26cb1331fa1812c7872944ef2478/nimble_python-0.12.0-py3-none-any.whl", hash = "sha256:89b5689efa52ff5f52e578b7e360d01a0303a5610d412004e2b8e0f1f8dbd9be", size = 160081, upload-time = "2026-03-18T12:42:54.766Z" },
+    { url = "https://files.pythonhosted.org/packages/c8/d9/c83717e864eb6fd5cc8eb198652f00000e462fa6a9044bf55c6ab4d6de73/nimble_python-1.1.0-py3-none-any.whl", hash = "sha256:deb4f8441e888b32ea55edda41c1efefc5c64c9146eb43d98310a76c16a5abbb", size = 260984, upload-time = "2026-07-21T19:17:45.05Z" },
 ]
 
 [[package]]

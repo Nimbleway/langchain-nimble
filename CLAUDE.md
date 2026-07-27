@@ -23,10 +23,12 @@ langchain_nimble/
 ├── toolkit.py             # NimbleToolkit (BaseToolkit) - groups all tools
 ├── tools/                 # LangChain tools package
 │   ├── search_tool.py     # NimbleSearchTool
-│   ├── extract_tool.py    # NimbleExtractTool
+│   ├── extract_tool.py    # NimbleExtractTool (URL → markdown via extract.run)
+│   ├── extract_template_tool.py  # Extract Templates list/get/run
 │   ├── map_tool.py        # NimbleMapTool
 │   ├── crawl_tool.py      # NimbleCrawlTool (async with polling)
-│   └── agent_tool.py      # NimbleAgentListTool, NimbleAgentGetTool, NimbleAgentRunTool
+│   ├── agents_v2_tool.py  # Agent API V2 list/create/start/status/result
+│   └── agent_tool.py      # Deprecated NimbleAgent* aliases → Extract Templates
 ├── _utilities.py          # _NimbleClientMixin, handle_api_errors (private)
 ├── _types.py              # Shared enums: SearchDepth, SearchFocus, etc. (private)
 └── __init__.py            # Public exports
@@ -92,13 +94,16 @@ uv run ruff format .
 - Each tool has `_build_*_kwargs()` to construct SDK call params, `_run()` sync, `_arun()` async
 - For async SDK operations (crawl): use poll-inside-the-tool with `time.monotonic()` deadline
 - NimbleToolkit groups tools with `include_*` flags; `get_tools()` returns `list[BaseTool]`
-- Agent API requires 3 tools (list→get→run) for proper LLM agent workflow
+- Extract Templates: 3 tools (list→get→run) via `include_extract_templates`
+- Agent API V2: resumable start/status/result (no poll-inside-tool) via `include_agents`
+- Deprecated `NimbleAgent*` / `include_agent` wrap Extract Templates only — never Agent API V2
+- Attribution: `client_source="langchain-nimble"` → `X-Client-Source: langchain-nimble`
 
 ### Nimble SDK Introspection
 - Inspect SDK methods: `uv run python -c "from nimble_python import Nimble; import inspect; print(inspect.signature(Nimble(api_key='x').search))"`
 - Inspect response types: `uv run python -c "from nimble_python.types import SearchResponse; print(SearchResponse.model_fields)"`
-- SDK APIs: `search()`, `extract()`, `map()` are synchronous; `crawl.run()` is async (needs polling via `crawl.status()`)
-- `agent.run()` is synchronous despite the name — returns data immediately
+- Prefer `nimble_python>=1.0.0`: `search()`, `extract.run()`, `extract.templates.*`, `agents.*`, `map()`; `crawl.run()` needs polling via `crawl.status()`
+- Agent API V2: `agents.runs.create` / `get` / `result` (resumable across turns)
 
 ---
 

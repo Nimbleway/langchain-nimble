@@ -275,7 +275,7 @@ def test_nimble_extract_tool_run_basic() -> None:
     mock_response = _mock_extract_sdk_response()
 
     with patch.object(
-        tool._sync_client, "extract", return_value=mock_response
+        tool._sync_client.extract, "run", return_value=mock_response
     ) as mock_extract:
         result = tool._run(url="https://example.com")
 
@@ -292,8 +292,8 @@ async def test_nimble_extract_tool_arun_basic() -> None:
     mock_response = _mock_extract_sdk_response()
 
     with patch.object(
-        tool._async_client,
-        "extract",
+        tool._async_client.extract,
+        "run",
         return_value=mock_response,
     ) as mock_extract:
         result = await tool._arun(url="https://example.com")
@@ -308,7 +308,7 @@ def test_nimble_extract_tool_invoke() -> None:
     mock_response = _mock_extract_sdk_response()
 
     with patch.object(
-        tool._sync_client, "extract", return_value=mock_response
+        tool._sync_client.extract, "run", return_value=mock_response
     ) as mock_extract:
         result = tool.invoke({"url": "https://example.com"})
 
@@ -323,8 +323,8 @@ async def test_nimble_extract_tool_ainvoke() -> None:
     mock_response = _mock_extract_sdk_response()
 
     with patch.object(
-        tool._async_client,
-        "extract",
+        tool._async_client.extract,
+        "run",
         return_value=mock_response,
     ) as mock_extract:
         result = await tool.ainvoke({"url": "https://example.com"})
@@ -340,7 +340,7 @@ def test_nimble_extract_tool_empty_response() -> None:
     mock_response = MagicMock()
     mock_response.data.markdown = None
 
-    with patch.object(tool._sync_client, "extract", return_value=mock_response):
+    with patch.object(tool._sync_client.extract, "run", return_value=mock_response):
         result = tool._run(url="https://example.com")
 
     assert result == ""

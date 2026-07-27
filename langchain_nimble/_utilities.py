@@ -13,6 +13,8 @@ from nimble_python import APITimeoutError as NimbleTimeoutError
 from nimble_python import AsyncNimble, Nimble
 from pydantic import BaseModel, Field, SecretStr, model_validator
 
+_CLIENT_SOURCE = "langchain-nimble"
+
 
 class _NimbleClientMixin(BaseModel):
     """Mixin providing Nimble API client configuration and initialization.
@@ -55,7 +57,7 @@ class _NimbleClientMixin(BaseModel):
         client_kwargs: dict[str, object] = {
             "api_key": api_key,
             "max_retries": self.max_retries,
-            "default_headers": {"X-Client-Source": "langchain-nimble"},
+            "client_source": _CLIENT_SOURCE,
         }
         if self.nimble_api_url is not None:
             client_kwargs["base_url"] = self.nimble_api_url

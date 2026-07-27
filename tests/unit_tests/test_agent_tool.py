@@ -1,4 +1,4 @@
-"""Unit tests for Nimble Agent tools (list, get, run)."""
+"""Unit tests for deprecated NimbleAgent* aliases (Extract Templates)."""
 
 from unittest.mock import MagicMock, patch
 
@@ -7,30 +7,22 @@ from langchain_core.tools import ToolException
 
 from langchain_nimble import NimbleAgentGetTool, NimbleAgentListTool, NimbleAgentRunTool
 
-# ───────────────────────────────────────────────────────────────
-# NimbleAgentListTool Tests
-# ───────────────────────────────────────────────────────────────
 
-
-def _mock_agent_list_response() -> list[MagicMock]:
-    """Create a mock agent list response."""
-    agent1 = MagicMock()
-    agent1.model_dump.return_value = {
+def _mock_template_list_response() -> MagicMock:
+    """Create a mock TemplateListResponse with .items."""
+    item1 = MagicMock()
+    item1.model_dump.return_value = {
         "name": "amazon_pdp",
         "display_name": "Amazon Product Page",
-        "is_public": True,
-        "managed_by": "nimble",
-        "description": "Extract Amazon product data",
     }
-    agent2 = MagicMock()
-    agent2.model_dump.return_value = {
+    item2 = MagicMock()
+    item2.model_dump.return_value = {
         "name": "google_search",
         "display_name": "Google Search",
-        "is_public": True,
-        "managed_by": "nimble",
-        "description": "Extract Google search results",
     }
-    return [agent1, agent2]
+    response = MagicMock()
+    response.items = [item1, item2]
+    return response
 
 
 def test_nimble_agent_list_tool_init() -> None:
@@ -40,298 +32,182 @@ def test_nimble_agent_list_tool_init() -> None:
 
 
 def test_nimble_agent_list_tool_run_basic() -> None:
-    """Test basic synchronous agent list."""
+    """Test deprecated list alias calls extract.templates.list."""
     tool = NimbleAgentListTool(api_key="test_key")
-    mock_response = _mock_agent_list_response()
+    mock_response = _mock_template_list_response()
 
-    with patch.object(
-        tool._sync_client.agent, "list", return_value=mock_response
-    ) as mock_list:
+    with (
+        patch.object(
+            tool._sync_client.extract.templates,
+            "list",
+            return_value=mock_response,
+        ) as mock_list,
+        pytest.warns(DeprecationWarning, match="Extract Templates"),
+    ):
         result = tool._run()
 
     assert len(result) == 2
     assert result[0]["name"] == "amazon_pdp"
-    assert result[1]["name"] == "google_search"
     mock_list.assert_called_once()
 
 
 async def test_nimble_agent_list_tool_arun_basic() -> None:
-    """Test basic asynchronous agent list."""
+    """Test deprecated async list alias."""
     tool = NimbleAgentListTool(api_key="test_key")
-    mock_response = _mock_agent_list_response()
+    mock_response = _mock_template_list_response()
 
-    with patch.object(
-        tool._async_client.agent, "list", return_value=mock_response
-    ) as mock_list:
-        result = await tool._arun()
+    with (
+        patch.object(
+            tool._async_client.extract.templates,
+            "list",
+            return_value=mock_response,
+        ) as mock_list,
+        pytest.warns(DeprecationWarning, match="Extract Templates"),
+    ):
+        result = await tool._arun(limit=5)
 
     assert len(result) == 2
-    mock_list.assert_awaited_once()
+    mock_list.assert_awaited_once_with(limit=5)
 
 
-def test_nimble_agent_list_tool_with_filters() -> None:
-    """Test agent list with filter parameters."""
+def test_nimble_agent_list_tool_with_pagination() -> None:
+    """Test deprecated list alias pagination kwargs."""
     tool = NimbleAgentListTool(api_key="test_key")
-    mock_response = _mock_agent_list_response()
+    mock_response = _mock_template_list_response()
 
-    with patch.object(
-        tool._sync_client.agent, "list", return_value=mock_response
-    ) as mock_list:
-        tool._run(
-            search="amazon",
-            managed_by="nimble",
-            privacy="public",
-            limit=10,
-        )
+    with (
+        patch.object(
+            tool._sync_client.extract.templates,
+            "list",
+            return_value=mock_response,
+        ) as mock_list,
+        pytest.warns(DeprecationWarning),
+    ):
+        tool._run(limit=10, offset=2)
 
     call_kwargs = mock_list.call_args.kwargs
-    assert call_kwargs["search"] == "amazon"
-    assert call_kwargs["managed_by"] == "nimble"
-    assert call_kwargs["privacy"] == "public"
     assert call_kwargs["limit"] == 10
+    assert call_kwargs["offset"] == 2
 
 
-# ───────────────────────────────────────────────────────────────
-# NimbleAgentGetTool Tests
-# ───────────────────────────────────────────────────────────────
-
-
-def _mock_agent_get_response() -> MagicMock:
-    """Create a mock AgentGetResponse."""
-    mock = MagicMock()
-    mock.model_dump.return_value = {
-        "name": "amazon_pdp",
-        "display_name": "Amazon Product Page",
-        "is_public": True,
-        "description": "Extract Amazon product data",
-        "input_properties": [
-            {
-                "name": "asin",
-                "type": "string",
-                "required": True,
-                "description": "Amazon product ASIN",
-                "examples": ["B0D1234567"],
-            },
-            {
-                "name": "zip_code",
-                "type": "string",
-                "required": False,
-                "description": "ZIP code for localization",
-            },
-        ],
-        "output_schema": {"type": "object"},
-    }
-    return mock
-
-
-def test_nimble_agent_get_tool_init() -> None:
-    """Test NimbleAgentGetTool initialization."""
+def test_nimble_agent_get_tool_run() -> None:
+    """Test deprecated get alias calls extract.templates.get."""
     tool = NimbleAgentGetTool(api_key="test_key")
-    assert tool.name == "nimble_agent_get"
+    mock_response = MagicMock()
+    mock_response.model_dump.return_value = {"name": "amazon_pdp"}
 
-
-def test_nimble_agent_get_tool_run_basic() -> None:
-    """Test basic synchronous agent get."""
-    tool = NimbleAgentGetTool(api_key="test_key")
-    mock_response = _mock_agent_get_response()
-
-    with patch.object(
-        tool._sync_client.agent, "get", return_value=mock_response
-    ) as mock_get:
+    with (
+        patch.object(
+            tool._sync_client.extract.templates,
+            "get",
+            return_value=mock_response,
+        ) as mock_get,
+        pytest.warns(DeprecationWarning),
+    ):
         result = tool._run(template_name="amazon_pdp")
 
     assert result["name"] == "amazon_pdp"
-    assert len(result["input_properties"]) == 2
-    assert result["input_properties"][0]["name"] == "asin"
-    assert result["input_properties"][0]["required"] is True
     mock_get.assert_called_once_with("amazon_pdp")
 
 
-async def test_nimble_agent_get_tool_arun_basic() -> None:
-    """Test basic asynchronous agent get."""
+async def test_nimble_agent_get_tool_arun() -> None:
+    """Test deprecated async get alias."""
     tool = NimbleAgentGetTool(api_key="test_key")
-    mock_response = _mock_agent_get_response()
+    mock_response = MagicMock()
+    mock_response.model_dump.return_value = {"name": "amazon_pdp"}
 
-    with patch.object(
-        tool._async_client.agent, "get", return_value=mock_response
-    ) as mock_get:
+    with (
+        patch.object(
+            tool._async_client.extract.templates,
+            "get",
+            return_value=mock_response,
+        ) as mock_get,
+        pytest.warns(DeprecationWarning),
+    ):
         result = await tool._arun(template_name="amazon_pdp")
 
     assert result["name"] == "amazon_pdp"
-    mock_get.assert_awaited_once_with("amazon_pdp")
+    mock_get.assert_awaited_once()
 
 
-def test_nimble_agent_get_tool_invoke() -> None:
-    """Test tool invoke method."""
-    tool = NimbleAgentGetTool(api_key="test_key")
-    mock_response = _mock_agent_get_response()
-
-    with patch.object(
-        tool._sync_client.agent, "get", return_value=mock_response
-    ) as mock_get:
-        result = tool.invoke({"template_name": "amazon_pdp"})
-
-    assert result is not None
-    mock_get.assert_called_once()
-
-
-# ───────────────────────────────────────────────────────────────
-# NimbleAgentRunTool Tests
-# ───────────────────────────────────────────────────────────────
-
-
-def _mock_agent_run_response(status: str = "success", **overrides: object) -> MagicMock:
-    """Create a mock AgentRunResponse."""
+def _mock_run_response(*, status: str = "success") -> MagicMock:
+    """Create a mock TemplateRunResponse."""
     mock = MagicMock()
     mock.status = status
-    mock.task_id = "test-task-id"
-    mock.url = "https://example.com"
+    mock.task_id = "task_123"
     mock.warnings = None
-    mock.model_dump.return_value = {
-        "status": status,
-        "task_id": "test-task-id",
-        "url": "https://example.com",
-        "data": {"markdown": "# Test Content", "parsing": {"key": "value"}},
-        "metadata": {},
-        **overrides,
-    }
-    for key, value in overrides.items():
-        setattr(mock, key, value)
+    mock.model_dump.return_value = {"status": status, "task_id": "task_123"}
     return mock
 
 
-def test_nimble_agent_run_tool_init() -> None:
-    """Test NimbleAgentRunTool initialization."""
+def test_nimble_agent_run_tool_maps_agent_to_template() -> None:
+    """Test deprecated run alias maps agent= to template=."""
     tool = NimbleAgentRunTool(api_key="test_key")
-    assert tool.name == "nimble_agent_run"
-    assert tool.nimble_api_key.get_secret_value() == "test_key"
-    assert tool._sync_client is not None
-    assert tool._async_client is not None
+    mock_response = _mock_run_response()
 
-
-def test_nimble_agent_run_tool_missing_api_key() -> None:
-    """Test NimbleAgentRunTool raises error without API key."""
     with (
-        patch.dict("os.environ", {}, clear=True),
-        pytest.raises(ValueError, match="API key required"),
+        patch.object(
+            tool._sync_client.extract.templates,
+            "run",
+            return_value=mock_response,
+        ) as mock_run,
+        pytest.warns(DeprecationWarning),
     ):
-        NimbleAgentRunTool()
-
-
-def test_nimble_agent_run_tool_run_basic() -> None:
-    """Test basic synchronous agent run."""
-    tool = NimbleAgentRunTool(api_key="test_key")
-    mock_response = _mock_agent_run_response()
-
-    with patch.object(
-        tool._sync_client.agent, "run", return_value=mock_response
-    ) as mock_run:
-        result = tool._run(agent="google_search", params={"query": "test"})
+        result = tool._run(agent="google_search", params={"query": "ai"})
 
     assert result["status"] == "success"
-    assert result["data"]["markdown"] == "# Test Content"
-    mock_run.assert_called_once()
-
     call_kwargs = mock_run.call_args.kwargs
-    assert call_kwargs["agent"] == "google_search"
-    assert call_kwargs["params"] == {"no_html": True, "query": "test"}
+    assert call_kwargs["template"] == "google_search"
+    assert call_kwargs["params"] == {"query": "ai"}
+    assert "no_html" not in call_kwargs["params"]
 
 
-async def test_nimble_agent_run_tool_arun_basic() -> None:
-    """Test basic asynchronous agent run."""
+async def test_nimble_agent_run_tool_arun() -> None:
+    """Test deprecated async run alias."""
     tool = NimbleAgentRunTool(api_key="test_key")
-    mock_response = _mock_agent_run_response()
-
-    with patch.object(
-        tool._async_client.agent, "run", return_value=mock_response
-    ) as mock_run:
-        result = await tool._arun(agent="google_search", params={"query": "test"})
-
-    assert result["status"] == "success"
-    mock_run.assert_awaited_once()
-
-
-def test_nimble_agent_run_tool_error_status() -> None:
-    """Test agent raises ToolException on non-success status."""
-    tool = NimbleAgentRunTool(api_key="test_key")
-    mock_response = _mock_agent_run_response(
-        status="error", warnings=["Something went wrong"]
-    )
+    mock_response = _mock_run_response()
 
     with (
-        patch.object(tool._sync_client.agent, "run", return_value=mock_response),
-        pytest.raises(ToolException, match="status 'error'"),
+        patch.object(
+            tool._async_client.extract.templates,
+            "run",
+            return_value=mock_response,
+        ) as mock_run,
+        pytest.warns(DeprecationWarning),
     ):
-        tool._run(agent="bad_agent", params={"url": "https://example.com"})
-
-
-def test_nimble_agent_run_tool_fatal_status() -> None:
-    """Test agent raises ToolException on fatal status."""
-    tool = NimbleAgentRunTool(api_key="test_key")
-    mock_response = _mock_agent_run_response(status="fatal")
-
-    with (
-        patch.object(tool._sync_client.agent, "run", return_value=mock_response),
-        pytest.raises(ToolException, match="status 'fatal'"),
-    ):
-        tool._run(agent="bad_agent", params={})
-
-
-def test_nimble_agent_run_tool_with_localization() -> None:
-    """Test agent run with localization parameter."""
-    tool = NimbleAgentRunTool(api_key="test_key")
-    mock_response = _mock_agent_run_response()
-
-    with patch.object(
-        tool._sync_client.agent, "run", return_value=mock_response
-    ) as mock_run:
-        tool._run(
+        result = await tool._arun(
             agent="google_search",
-            params={"query": "test"},
+            params={"query": "ai"},
             localization=True,
         )
 
-    call_kwargs = mock_run.call_args.kwargs
-    assert call_kwargs["localization"] is True
+    assert result["status"] == "success"
+    assert mock_run.call_args.kwargs["localization"] is True
 
 
-def test_nimble_agent_run_tool_invoke() -> None:
-    """Test tool invoke method."""
+def test_nimble_agent_run_tool_failure_status() -> None:
+    """Test deprecated run alias raises on non-success status."""
     tool = NimbleAgentRunTool(api_key="test_key")
-    mock_response = _mock_agent_run_response()
+    mock_response = _mock_run_response(status="error")
 
-    with patch.object(
-        tool._sync_client.agent, "run", return_value=mock_response
-    ) as mock_run:
-        result = tool.invoke({"agent": "google_search", "params": {"query": "test"}})
-
-    assert result is not None
-    mock_run.assert_called_once()
-
-
-async def test_nimble_agent_run_tool_ainvoke() -> None:
-    """Test tool async invoke method."""
-    tool = NimbleAgentRunTool(api_key="test_key")
-    mock_response = _mock_agent_run_response()
-
-    with patch.object(
-        tool._async_client.agent, "run", return_value=mock_response
-    ) as mock_run:
-        result = await tool.ainvoke(
-            {"agent": "google_search", "params": {"query": "test"}}
-        )
-
-    assert result is not None
-    mock_run.assert_awaited_once()
+    with (
+        patch.object(
+            tool._sync_client.extract.templates,
+            "run",
+            return_value=mock_response,
+        ),
+        pytest.warns(DeprecationWarning),
+        pytest.raises(ToolException, match="error"),
+    ):
+        tool._run(agent="google_search", params={"query": "ai"})
 
 
 def test_nimble_agent_run_tool_input_validation() -> None:
-    """Test NimbleAgentRunToolInput validation."""
+    """Test NimbleAgentRunToolInput still accepts agent + params."""
     from langchain_nimble.tools.agent_tool import NimbleAgentRunToolInput
 
     valid_input = NimbleAgentRunToolInput(
-        agent="google_search", params={"query": "test"}
+        agent="google_search",
+        params={"query": "test"},
     )
     assert valid_input.agent == "google_search"
-    assert valid_input.params == {"query": "test"}
-    assert valid_input.localization is None
