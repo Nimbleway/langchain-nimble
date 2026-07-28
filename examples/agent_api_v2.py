@@ -65,7 +65,7 @@ async def main() -> None:
             "Or Mode 2 with a persisted agent_id / create tool. "
             "Mode 3: omit both agent_id and agent_name.\n\n"
             "Workflow:\n"
-            "1. Start a run (returns immediately; often 3–15 minutes total)\n"
+            "1. Start a run (returns immediately; often 3-15 minutes total)\n"
             "2. Map id -> run_id, web_search_agent_id -> agent_id\n"
             "3. nimble_web_search_agent_run_status until completed/failed\n"
             "4. nimble_web_search_agent_run_result for text/json + trust\n\n"

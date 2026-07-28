@@ -563,8 +563,9 @@ class NimbleAgentRunStartToolInput(BaseModel):
         description="""Effort tier for this run: low | medium | high | x-high | max.
 
         Runs often take 3-15 minutes (medium ~90-160s observed; low ~15-17s
-        may skip live research). Prefer medium+ for real research. Do not
-        poll inside one tool call — use status/result across turns.
+        may skip live research). Prefer medium+ for real research.
+        dataset_building requires effort high or higher. Do not poll inside
+        one tool call — use status/result across turns.
         """,
     )
     sources: dict[str, Any] | None = Field(

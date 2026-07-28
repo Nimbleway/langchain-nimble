@@ -282,7 +282,7 @@ started = start.invoke({
 |-------|--------|------|
 | `research` | `output.type: "text"` + citations | Free-form cited answer |
 | `enrichment` | `output.type: "json"` | Fill `input_data` against a schema |
-| `dataset_building` | `output.type: "json"` | Structured table from scratch |
+| `dataset_building` | `output.type: "json"` | Structured table from scratch (API requires `effort` `high`+) |
 
 Set **once** when the agent is created (Mode 1 first call, Mode 3, or
 `nimble_web_search_agent_create`). Against an existing agent: omit or pass the
