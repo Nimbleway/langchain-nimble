@@ -10,7 +10,20 @@ from langchain_nimble.tools.agent_tool import (
     NimbleAgentListTool,
     NimbleAgentRunTool,
 )
+from langchain_nimble.tools.agents_v2_tool import (
+    NimbleAgentCreateTool,
+    NimbleAgentRunResultTool,
+    NimbleAgentRunStartTool,
+    NimbleAgentRunStatusTool,
+    NimbleAgentsListTool,
+    NimbleAgentTemplatesListTool,
+)
 from langchain_nimble.tools.crawl_tool import NimbleCrawlTool
+from langchain_nimble.tools.extract_template_tool import (
+    NimbleExtractTemplateGetTool,
+    NimbleExtractTemplateListTool,
+    NimbleExtractTemplateRunTool,
+)
 from langchain_nimble.tools.extract_tool import NimbleExtractTool
 from langchain_nimble.tools.map_tool import NimbleMapTool
 from langchain_nimble.tools.search_tool import NimbleSearchTool
@@ -24,11 +37,20 @@ del metadata  # optional, avoids polluting the results of dir(__package__)
 
 __all__ = [
     "BrowserlessDriver",
+    "NimbleAgentCreateTool",
     "NimbleAgentGetTool",
     "NimbleAgentListTool",
+    "NimbleAgentRunResultTool",
+    "NimbleAgentRunStartTool",
+    "NimbleAgentRunStatusTool",
     "NimbleAgentRunTool",
+    "NimbleAgentTemplatesListTool",
+    "NimbleAgentsListTool",
     "NimbleCrawlTool",
     "NimbleExtractRetriever",
+    "NimbleExtractTemplateGetTool",
+    "NimbleExtractTemplateListTool",
+    "NimbleExtractTemplateRunTool",
     "NimbleExtractTool",
     "NimbleMapTool",
     "NimbleSearchRetriever",

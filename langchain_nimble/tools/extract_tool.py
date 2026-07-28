@@ -44,7 +44,7 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
     handle_tool_error: bool = True
 
     def _build_extract_kwargs(self, url: str) -> dict[str, Any]:
-        """Build keyword arguments for SDK extract() call."""
+        """Build keyword arguments for SDK extract.run() call."""
         return {
             "url": url,
             "locale": self.locale,
@@ -59,7 +59,7 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
             raise RuntimeError(msg)
 
         with handle_api_errors(operation="extract"):
-            response = self._sync_client.extract(**self._build_extract_kwargs(url))
+            response = self._sync_client.extract.run(**self._build_extract_kwargs(url))
             if response.data and response.data.markdown:
                 return response.data.markdown
             return ""
@@ -71,7 +71,7 @@ class NimbleExtractTool(_NimbleClientMixin, BaseTool):
             raise RuntimeError(msg)
 
         with handle_api_errors(operation="extract"):
-            response = await self._async_client.extract(
+            response = await self._async_client.extract.run(
                 **self._build_extract_kwargs(url)
             )
             if response.data and response.data.markdown:

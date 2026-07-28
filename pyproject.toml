@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "langchain-nimble"
-version = "3.0.0"
+version = "4.0.0"
 description = "An integration package connecting Nimble and LangChain"
 license = { text = "MIT" }
 readme = "README.md"
@@ -13,7 +13,7 @@ authors = []
 requires-python = ">=3.10.0,<4.0.0"
 dependencies = [
     "langchain-core>=1.2.5,<2.0.0",
-    "nimble_python>=0.12.0,<1.0.0",
+    "nimble_python>=1.2.0,<2.0.0",
 ]
 
 [project.urls]
@@ -117,10 +117,11 @@ unfixable = ["B028"]  # People should intentionally tune the stacklevel
 omit = ["tests/*"]
 
 [tool.pytest.ini_options]
-addopts = "--snapshot-warn-unused --strict-markers --strict-config --durations=5"
+addopts = "--snapshot-warn-unused --strict-markers --strict-config --durations=5 -m 'not expensive'"
 markers = [
     "requires: mark tests as requiring a specific library",
     "compile: mark placeholder test used to compile integration tests without running them",
+    "expensive: mark billable live API tests (opt-in with -m expensive)",
 ]
 asyncio_mode = "auto"
 

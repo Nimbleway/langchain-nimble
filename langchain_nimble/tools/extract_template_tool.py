@@ -1,15 +1,7 @@
-"""Deprecated aliases for legacy Nimble Agent tools.
-
-These tools previously wrapped the deprecated site-scraping ``client.agent.*``
-API. They now delegate to Extract Templates (``client.extract.templates.*``)
-and emit ``DeprecationWarning``. Prefer the ``nimble_extract_template_*`` tools.
-
-They are intentionally NOT wired to Agent API V2 research agents.
-"""
+"""LangChain tools for Nimble Extract Templates API."""
 
 from __future__ import annotations
 
-import warnings
 from typing import Any
 
 from langchain_core.tools import BaseTool, ToolException
@@ -21,29 +13,15 @@ from langchain_nimble._utilities import (
     require_initialized_client,
 )
 
-_DEPRECATION_MESSAGE = (
-    "NimbleAgent* tools are deprecated and now wrap Extract Templates. "
-    "Use nimble_extract_template_list / nimble_extract_template_get / "
-    "nimble_extract_template_run instead. For Agent API V2 research agents, "
-    "use nimble_web_search_agents_list, nimble_web_search_agent_run_start, "
-    "nimble_web_search_agent_run_status, and nimble_web_search_agent_run_result."
-)
-
-
-def _warn_deprecated() -> None:
-    """Emit a deprecation warning for legacy agent tool names."""
-    warnings.warn(_DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=3)
-
-
 # ───────────────────────────────────────────────────────────────
-# nimble_agent_list (deprecated → extract templates list)
+# nimble_extract_template_list
 # ───────────────────────────────────────────────────────────────
 
 
-class NimbleAgentListToolInput(BaseModel):
-    """Input schema for NimbleAgentListTool.
+class NimbleExtractTemplateListToolInput(BaseModel):
+    """Input schema for NimbleExtractTemplateListTool.
 
-    Deprecated alias of Extract Templates list pagination fields.
+    Accepts optional pagination for listing Extract Templates.
     """
 
     limit: int | None = Field(
@@ -56,10 +34,11 @@ class NimbleAgentListToolInput(BaseModel):
     )
 
 
-class NimbleAgentListTool(_NimbleClientMixin, BaseTool):
-    """Deprecated: list Extract Templates under the legacy agent tool name.
+class NimbleExtractTemplateListTool(_NimbleClientMixin, BaseTool):
+    """List available Nimble Extract Templates.
 
-    Prefer ``NimbleExtractTemplateListTool``.
+    Returns template names and metadata. Use this tool first to discover
+    which templates are available before getting details or running one.
 
     Args:
         api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
@@ -67,13 +46,15 @@ class NimbleAgentListTool(_NimbleClientMixin, BaseTool):
         max_retries: Maximum retry attempts for 5xx errors (default: 2).
     """
 
-    name: str = "nimble_agent_list"
+    name: str = "nimble_extract_template_list"
     description: str = (
-        "DEPRECATED: List Nimble Extract Templates (legacy agent tool name). "
-        "Prefer nimble_extract_template_list. For Agent API V2 research, use "
-        "nimble_web_search_agents_list instead."
+        "List available Nimble Extract Templates for structured site scraping. "
+        "Returns template names and metadata. Use this first to discover which "
+        "templates exist, then use nimble_extract_template_get to see required "
+        "parameters. This is NOT Agent API V2 research — use "
+        "nimble_web_search_agents_list for Web Search Agents."
     )
-    args_schema: type[BaseModel] = NimbleAgentListToolInput
+    args_schema: type[BaseModel] = NimbleExtractTemplateListToolInput
     handle_tool_error: bool = True
 
     def _build_list_kwargs(
@@ -104,7 +85,7 @@ class NimbleAgentListTool(_NimbleClientMixin, BaseTool):
         limit: int | None = None,
         offset: int | None = None,
     ) -> list[dict[str, Any]]:
-        """List extract templates synchronously (deprecated alias).
+        """List extract templates synchronously.
 
         Args:
             limit: Maximum number of templates to return.
@@ -113,7 +94,6 @@ class NimbleAgentListTool(_NimbleClientMixin, BaseTool):
         Returns:
             List of template records as dictionaries.
         """
-        _warn_deprecated()
         require_initialized_client(self.name, self._sync_client, sync=True)
 
         list_kwargs = self._build_list_kwargs(limit=limit, offset=offset)
@@ -128,7 +108,7 @@ class NimbleAgentListTool(_NimbleClientMixin, BaseTool):
         limit: int | None = None,
         offset: int | None = None,
     ) -> list[dict[str, Any]]:
-        """List extract templates asynchronously (deprecated alias).
+        """List extract templates asynchronously.
 
         Args:
             limit: Maximum number of templates to return.
@@ -137,7 +117,6 @@ class NimbleAgentListTool(_NimbleClientMixin, BaseTool):
         Returns:
             List of template records as dictionaries.
         """
-        _warn_deprecated()
         require_initialized_client(self.name, self._async_client, sync=False)
 
         list_kwargs = self._build_list_kwargs(limit=limit, offset=offset)
@@ -148,29 +127,31 @@ class NimbleAgentListTool(_NimbleClientMixin, BaseTool):
 
 
 # ───────────────────────────────────────────────────────────────
-# nimble_agent_get (deprecated → extract templates get)
+# nimble_extract_template_get
 # ───────────────────────────────────────────────────────────────
 
 
-class NimbleAgentGetToolInput(BaseModel):
-    """Input schema for NimbleAgentGetTool.
+class NimbleExtractTemplateGetToolInput(BaseModel):
+    """Input schema for NimbleExtractTemplateGetTool.
 
-    Deprecated alias of Extract Templates get input.
+    Requires a template name discovered via list.
     """
 
     template_name: str = Field(
         description="""The extract template name to get details for.
 
-        Prefer nimble_extract_template_get. Examples: "amazon_pdp",
-        "google_search", "walmart_pdp"
+        Use nimble_extract_template_list first to discover available template
+        names, then pass one here to see its schema and versions.
+        Examples: "amazon_pdp", "google_search", "walmart_pdp"
         """,
     )
 
 
-class NimbleAgentGetTool(_NimbleClientMixin, BaseTool):
-    """Deprecated: get Extract Template details under the legacy agent name.
+class NimbleExtractTemplateGetTool(_NimbleClientMixin, BaseTool):
+    """Get details about a specific Nimble Extract Template.
 
-    Prefer ``NimbleExtractTemplateGetTool``.
+    Returns template metadata including published version information.
+    Use after nimble_extract_template_list before running a template.
 
     Args:
         api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
@@ -178,16 +159,18 @@ class NimbleAgentGetTool(_NimbleClientMixin, BaseTool):
         max_retries: Maximum retry attempts for 5xx errors (default: 2).
     """
 
-    name: str = "nimble_agent_get"
+    name: str = "nimble_extract_template_get"
     description: str = (
-        "DEPRECATED: Get a Nimble Extract Template (legacy agent tool name). "
-        "Prefer nimble_extract_template_get."
+        "Get details about a Nimble Extract Template including its published "
+        "version and metadata. Use after nimble_extract_template_list to learn "
+        "what params to pass to nimble_extract_template_run. This is structured "
+        "site scraping, not Agent API V2 research."
     )
-    args_schema: type[BaseModel] = NimbleAgentGetToolInput
+    args_schema: type[BaseModel] = NimbleExtractTemplateGetToolInput
     handle_tool_error: bool = True
 
     def _run(self, template_name: str) -> dict[str, Any]:
-        """Get extract template details synchronously (deprecated alias).
+        """Get extract template details synchronously.
 
         Args:
             template_name: Extract template name to fetch.
@@ -195,7 +178,6 @@ class NimbleAgentGetTool(_NimbleClientMixin, BaseTool):
         Returns:
             Template metadata as a dictionary.
         """
-        _warn_deprecated()
         require_initialized_client(self.name, self._sync_client, sync=True)
 
         with handle_api_errors(operation="extract template get"):
@@ -203,7 +185,7 @@ class NimbleAgentGetTool(_NimbleClientMixin, BaseTool):
             return response.model_dump(mode="json")
 
     async def _arun(self, template_name: str) -> dict[str, Any]:
-        """Get extract template details asynchronously (deprecated alias).
+        """Get extract template details asynchronously.
 
         Args:
             template_name: Extract template name to fetch.
@@ -211,7 +193,6 @@ class NimbleAgentGetTool(_NimbleClientMixin, BaseTool):
         Returns:
             Template metadata as a dictionary.
         """
-        _warn_deprecated()
         require_initialized_client(self.name, self._async_client, sync=False)
 
         with handle_api_errors(operation="extract template get"):
@@ -220,29 +201,34 @@ class NimbleAgentGetTool(_NimbleClientMixin, BaseTool):
 
 
 # ───────────────────────────────────────────────────────────────
-# nimble_agent_run (deprecated → extract templates run)
+# nimble_extract_template_run
 # ───────────────────────────────────────────────────────────────
 
 
-class NimbleAgentRunToolInput(BaseModel):
-    """Input schema for NimbleAgentRunTool.
+class NimbleExtractTemplateRunToolInput(BaseModel):
+    """Input schema for NimbleExtractTemplateRunTool.
 
-    Deprecated alias of Extract Templates run input (``agent`` = template).
+    Runs a named Extract Template with template-specific params.
     """
 
-    agent: str = Field(
-        description="""The extract template name to run (legacy param name).
+    template: str = Field(
+        description="""The extract template name to run.
 
-        Prefer nimble_extract_template_run with template=. Examples:
-        "amazon_pdp", "google_search", "walmart_pdp"
+        Use nimble_extract_template_list to discover available templates, then
+        nimble_extract_template_get to inspect metadata before running.
+        Examples: "amazon_pdp", "google_search", "walmart_pdp"
         """,
     )
     params: dict[str, object] = Field(
         description="""Template-specific parameters.
 
-        Prefer nimble_extract_template_run. Common examples:
+        Each template requires different parameters. Inspect the template
+        (or your Nimble console / docs) for the exact params.
+
+        Common examples:
         - amazon_pdp: {"asin": "B0..."}
         - google_search: {"query": "search term"}
+        - walmart_pdp: {"url": "https://walmart.com/ip/..."}
         """,
     )
     localization: bool | None = Field(
@@ -251,11 +237,18 @@ class NimbleAgentRunToolInput(BaseModel):
     )
 
 
-class NimbleAgentRunTool(_NimbleClientMixin, BaseTool):
-    """Deprecated: run an Extract Template under the legacy agent tool name.
+class NimbleExtractTemplateRunTool(_NimbleClientMixin, BaseTool):
+    """Run a Nimble Extract Template for structured data collection.
 
-    Prefer ``NimbleExtractTemplateRunTool``.
-    This does NOT call Agent API V2 research agents.
+    Extract Templates handle structured site scraping workflows such as
+    product page parsing and search result extraction. This is distinct from
+    Agent API V2 research agents (use ``nimble_web_search_agent_run_start`` /
+    status / result).
+
+    Recommended workflow:
+    1. nimble_extract_template_list → discover available templates
+    2. nimble_extract_template_get → inspect a specific template
+    3. nimble_extract_template_run → execute with the correct params
 
     Args:
         api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
@@ -263,18 +256,19 @@ class NimbleAgentRunTool(_NimbleClientMixin, BaseTool):
         max_retries: Maximum retry attempts for 5xx errors (default: 2).
     """
 
-    name: str = "nimble_agent_run"
+    name: str = "nimble_extract_template_run"
     description: str = (
-        "DEPRECATED: Run a Nimble Extract Template (legacy agent tool name). "
-        "Prefer nimble_extract_template_run. For Agent API V2 research, use "
-        "nimble_web_search_agent_run_start / status / result."
+        "Run a Nimble Extract Template for structured site scraping. "
+        "Use nimble_extract_template_list and nimble_extract_template_get "
+        "first to discover templates and their parameters. Do not use this "
+        "for multi-minute research — use Agent API V2 run tools instead."
     )
-    args_schema: type[BaseModel] = NimbleAgentRunToolInput
+    args_schema: type[BaseModel] = NimbleExtractTemplateRunToolInput
     handle_tool_error: bool = True
 
     def _build_run_kwargs(
         self,
-        agent: str,
+        template: str,
         params: dict[str, object],
         *,
         localization: bool | None,
@@ -282,7 +276,7 @@ class NimbleAgentRunTool(_NimbleClientMixin, BaseTool):
         """Build keyword arguments for extract.templates.run().
 
         Args:
-            agent: Extract template name (legacy param name).
+            template: Extract template name to run.
             params: Template-specific parameters.
             localization: Optional localization flag.
 
@@ -290,7 +284,7 @@ class NimbleAgentRunTool(_NimbleClientMixin, BaseTool):
             Keyword arguments accepted by ``extract.templates.run``.
         """
         kwargs: dict[str, Any] = {
-            "template": agent,
+            "template": template,
             "params": params,
         }
         if localization is not None:
@@ -322,26 +316,25 @@ class NimbleAgentRunTool(_NimbleClientMixin, BaseTool):
 
     def _run(
         self,
-        agent: str,
+        template: str,
         params: dict[str, object],
         *,
         localization: bool | None = None,
     ) -> dict[str, Any]:
-        """Execute extract template synchronously (deprecated alias).
+        """Execute extract template synchronously.
 
         Args:
-            agent: Extract template name (legacy param name).
+            template: Extract template name to run.
             params: Template-specific parameters.
             localization: Optional localization flag.
 
         Returns:
             Successful template run payload as a dictionary.
         """
-        _warn_deprecated()
         require_initialized_client(self.name, self._sync_client, sync=True)
 
         run_kwargs = self._build_run_kwargs(
-            agent=agent,
+            template=template,
             params=params,
             localization=localization,
         )
@@ -352,26 +345,25 @@ class NimbleAgentRunTool(_NimbleClientMixin, BaseTool):
 
     async def _arun(
         self,
-        agent: str,
+        template: str,
         params: dict[str, object],
         *,
         localization: bool | None = None,
     ) -> dict[str, Any]:
-        """Execute extract template asynchronously (deprecated alias).
+        """Execute extract template asynchronously.
 
         Args:
-            agent: Extract template name (legacy param name).
+            template: Extract template name to run.
             params: Template-specific parameters.
             localization: Optional localization flag.
 
         Returns:
             Successful template run payload as a dictionary.
         """
-        _warn_deprecated()
         require_initialized_client(self.name, self._async_client, sync=False)
 
         run_kwargs = self._build_run_kwargs(
-            agent=agent,
+            template=template,
             params=params,
             localization=localization,
         )

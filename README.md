@@ -14,7 +14,8 @@ langchain-nimble provides powerful web search and content extraction capabilitie
 - 🔍 **Search Depth Levels**: lite (metadata), fast (Enterprise), deep (full content)
 - 🤖 **LLM Answers**: Optional AI-generated answer summaries
 - 🎯 **Focus Modes**: Specialized search (general, news, location, shopping, geo, social)
-- 🛍️ **AI-Powered WSA**: Web Search Agents for shopping, geo, and social media
+- 📋 **Extract Templates**: Structured site scraping (`nimble_extract_template_*`)
+- 🤖 **Agent API V2**: Resumable Web Search Agent research (`start` / `status` / `result`)
 - ⏰ **Time Range Filtering**: Quick recency filters (hour, day, week, month, year)
 - 📅 **Date Filtering**: Search by specific date ranges
 - 🌐 **Domain Control**: Include/exclude specific domains
@@ -185,6 +186,132 @@ result = extract_tool.invoke({
     "url": "https://www.langchain.com/"
 })
 ```
+
+### Extract Templates (structured site scraping)
+
+Use when you need a named template (e.g. product pages) with structured params — distinct from URL markdown extract and from Agent API V2 research.
+
+```python
+from langchain_nimble import NimbleToolkit
+
+toolkit = NimbleToolkit(include_extract_templates=True)
+tools = toolkit.get_tools()
+# nimble_extract_template_list → get → run
+```
+
+Or import tools directly: `NimbleExtractTemplateListTool`, `NimbleExtractTemplateGetTool`, `NimbleExtractTemplateRunTool`.
+
+> **Deprecated:** `NimbleAgentListTool` / `Get` / `Run` (`nimble_agent_*`) are aliases that now wrap Extract Templates. Prefer the `nimble_extract_template_*` names. They do **not** call Agent API V2.
+
+### Agent API V2 (Web Search Agents / research)
+
+Resumable research agents under `/v2/agents/*`. **Distinct from Extract Templates.**
+
+LangChain tool sessions are typically **stateless**, so prefer **Mode 1**
+(`agent_name` create-or-reuse) on `nimble_web_search_agent_run_start`. Use
+**Mode 2** (`agent_id` / `wsa_…`) when your app persists the id. Omit both for
+**Mode 3** anonymous one-shot (response still includes `web_search_agent_id`).
+
+Start / status / result are **separate tools** — do not hide multi-minute
+polling in one call. Runs often take **3–15 minutes**.
+
+```python
+from langchain_nimble import NimbleToolkit
+
+toolkit = NimbleToolkit(include_web_search_agents=True)
+tools = toolkit.get_tools()
+# nimble_web_search_agents_list, nimble_web_search_agent_templates_list,
+# nimble_web_search_agent_create, nimble_web_search_agent_run_start,
+# nimble_web_search_agent_run_status, nimble_web_search_agent_run_result
+```
+
+#### Modes (runnable sketches)
+
+**Mode 1 — create-or-reuse by name (default for stateless hosts):**
+
+```python
+from langchain_nimble import NimbleAgentRunStartTool, NimbleAgentRunStatusTool, NimbleAgentRunResultTool
+
+start = NimbleAgentRunStartTool()
+started = start.invoke({
+    "agent_name": "integrations_research_bot",
+    "use_case": "research",
+    "effort": "medium",
+    "skill": "Focus on official docs and changelogs",
+    "input": "Summarize recent Agent API v2 changes for integrators.",
+})
+# started["id"] -> task_run_… ; started["web_search_agent_id"] -> wsa_…
+# Reuse the same agent_name later; a failed first run does not brick the name.
+```
+
+**Mode 2 — persist `wsa_…`:**
+
+```python
+from langchain_nimble import NimbleAgentCreateTool, NimbleAgentRunStartTool
+
+create = NimbleAgentCreateTool()
+agent = create.invoke({
+    "agent_name": "enrich_bot",
+    "use_case": "enrichment",
+    "skill": "Company firmographics",
+    "output_schema": {"type": "object", "properties": {"domain": {"type": "string"}}},
+})
+start = NimbleAgentRunStartTool()
+started = start.invoke({
+    "agent_id": agent["id"],
+    "input": "Enrich this company row",
+    "input_data": [{"domain": "example.com"}],
+    "effort": "medium",
+})
+```
+
+**Mode 3 — anonymous one-shot:** omit `agent_id` and `agent_name`; still read
+`web_search_agent_id` from the start response if you want to graduate to Mode 2.
+
+#### Effort tiers
+
+| Tier | Guidance |
+|------|----------|
+| `low` | ~15–17s; may skip live research (0 sources / low confidence) |
+| `medium` | ~90–160s observed — good default for real research |
+| `high` / `x-high` / `max` | Longer; design UX for **3–15 minutes** wall time |
+
+#### `use_case` (locked, not a silent per-run override)
+
+| Value | Output | When |
+|-------|--------|------|
+| `research` | `output.type: "text"` + citations | Free-form cited answer |
+| `enrichment` | `output.type: "json"` | Fill `input_data` against a schema |
+| `dataset_building` | `output.type: "json"` | Structured table from scratch (API requires `effort` `high`+) |
+
+Set **once** when the agent is created (Mode 1 first call, Mode 3, or
+`nimble_web_search_agent_create`). Against an existing agent: omit or pass the
+**same** value — a different value returns **422**.
+
+#### Overrides vs persist
+
+On an **existing** agent, run-level `sources` / `output_schema` / `skill` are
+**one-time** (they do not mutate the stored agent). On **Mode 1 first create**,
+those fields **are** stored. `input_data` is always run-only (enrichment
+payload ≠ schema). `use_case` is never a silent override.
+
+#### `sources` fields
+
+```python
+sources = {
+    "allow": [{"title": "Official filings", "domains": ["sec.gov"], "order": 0}],
+    "block": [{"title": "Junk", "domains": ["example.com"], "order": 0}],
+    "avoid": "free-text domains or source types to avoid",
+    "prioritize": "free-text domains or source types to prefer",
+}
+```
+
+#### Events (intentional gap)
+
+API supports `enable_events: true` + `GET …/runs/{run_id}/events` (SSE). This
+package does **not** expose a separate events tool yet — use start/status/result.
+
+Attribution: every request sends `X-Client-Source: langchain-nimble`.
 
 ### Multi-Tool Agent
 

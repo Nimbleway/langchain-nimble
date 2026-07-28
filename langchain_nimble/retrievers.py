@@ -8,15 +8,15 @@ from langchain_core.callbacks.manager import (
 )
 from langchain_core.documents.base import Document
 from langchain_core.retrievers import BaseRetriever
-from nimble_python.types import ExtractResponse, SearchResponse
+from nimble_python.types import ExtractRunResponse, SearchResponse
 from nimble_python.types.search_response import (
     Result,
     ResultMetadataSerpMetadata,
 )
 from pydantic import Field
 
-from ._types import BrowserlessDriver
-from ._utilities import _NimbleClientMixin, handle_api_errors
+from langchain_nimble._types import BrowserlessDriver
+from langchain_nimble._utilities import _NimbleClientMixin, handle_api_errors
 
 
 def _search_result_to_document(result: Result) -> Document:
@@ -48,9 +48,9 @@ def _parse_search_response(
 
 
 def _parse_extract_response(
-    response: ExtractResponse,
+    response: ExtractRunResponse,
 ) -> list[Document]:
-    """Parse SDK ExtractResponse into a single-item Document list."""
+    """Parse SDK ExtractRunResponse into a single-item Document list."""
     content = ""
     if response.data and response.data.markdown:
         content = response.data.markdown
@@ -210,7 +210,7 @@ class NimbleExtractRetriever(_NimbleClientMixin, BaseRetriever):
     wait: int | None = None
 
     def _build_extract_kwargs(self, query: str, **kwargs: Any) -> dict[str, Any]:
-        """Build keyword arguments for SDK extract() call."""
+        """Build keyword arguments for SDK extract.run() call."""
         extract_kwargs: dict[str, Any] = {
             "url": query,
             "locale": kwargs.get("locale", self.locale),
@@ -242,7 +242,7 @@ class NimbleExtractRetriever(_NimbleClientMixin, BaseRetriever):
 
         with handle_api_errors(operation="extract"):
             extract_kwargs = self._build_extract_kwargs(query, **kwargs)
-            response = self._sync_client.extract(**extract_kwargs)
+            response = self._sync_client.extract.run(**extract_kwargs)
             return _parse_extract_response(response)
 
     async def _aget_relevant_documents(
@@ -257,7 +257,7 @@ class NimbleExtractRetriever(_NimbleClientMixin, BaseRetriever):
             raise RuntimeError(msg)
 
         with handle_api_errors(operation="extract"):
-            response = await self._async_client.extract(
+            response = await self._async_client.extract.run(
                 **self._build_extract_kwargs(query, **kwargs)
             )
             return _parse_extract_response(response)

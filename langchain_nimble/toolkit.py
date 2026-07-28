@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 from langchain_core.tools import BaseTool, BaseToolkit
 from langchain_core.utils import secret_from_env
 from pydantic import Field, SecretStr
@@ -14,7 +16,7 @@ class NimbleToolkit(BaseToolkit):
     All tools share the same API key and client configuration.
 
     By default, only Search and Extract tools are enabled. Crawl, Map,
-    and Agent tools are opt-in.
+    Extract Templates, and Agent API V2 tools are opt-in.
 
     Example::
 
@@ -56,9 +58,23 @@ class NimbleToolkit(BaseToolkit):
         default=False,
         description="Include NimbleMapTool.",
     )
+    include_extract_templates: bool = Field(
+        default=False,
+        description="Include Extract Templates tools (list, get, run).",
+    )
+    include_web_search_agents: bool = Field(
+        default=False,
+        description=(
+            "Include Agent API V2 Web Search Agent tools "
+            "(list, create, start/status/result)."
+        ),
+    )
     include_agent: bool = Field(
         default=False,
-        description="Include agent tools (list, get, run).",
+        description=(
+            "Deprecated. Include legacy nimble_agent_* aliases that wrap "
+            "Extract Templates. Prefer include_extract_templates."
+        ),
     )
 
     crawl_polling_interval: float = Field(
@@ -114,6 +130,30 @@ class NimbleToolkit(BaseToolkit):
             tools.append(NimbleMapTool(**common_kwargs))
 
         if self.include_agent:
+            warnings.warn(
+                "NimbleToolkit(include_agent=True) is deprecated. "
+                "Use include_extract_templates=True for Extract Templates, "
+                "or include_web_search_agents=True for Agent API V2 research "
+                "tools.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        if self.include_extract_templates:
+            from langchain_nimble.tools.extract_template_tool import (
+                NimbleExtractTemplateGetTool,
+                NimbleExtractTemplateListTool,
+                NimbleExtractTemplateRunTool,
+            )
+
+            tools.extend(
+                [
+                    NimbleExtractTemplateListTool(**common_kwargs),
+                    NimbleExtractTemplateGetTool(**common_kwargs),
+                    NimbleExtractTemplateRunTool(**common_kwargs),
+                ]
+            )
+        elif self.include_agent:
             from langchain_nimble.tools.agent_tool import (
                 NimbleAgentGetTool,
                 NimbleAgentListTool,
@@ -125,6 +165,27 @@ class NimbleToolkit(BaseToolkit):
                     NimbleAgentListTool(**common_kwargs),
                     NimbleAgentGetTool(**common_kwargs),
                     NimbleAgentRunTool(**common_kwargs),
+                ]
+            )
+
+        if self.include_web_search_agents:
+            from langchain_nimble.tools.agents_v2_tool import (
+                NimbleAgentCreateTool,
+                NimbleAgentRunResultTool,
+                NimbleAgentRunStartTool,
+                NimbleAgentRunStatusTool,
+                NimbleAgentsListTool,
+                NimbleAgentTemplatesListTool,
+            )
+
+            tools.extend(
+                [
+                    NimbleAgentsListTool(**common_kwargs),
+                    NimbleAgentTemplatesListTool(**common_kwargs),
+                    NimbleAgentCreateTool(**common_kwargs),
+                    NimbleAgentRunStartTool(**common_kwargs),
+                    NimbleAgentRunStatusTool(**common_kwargs),
+                    NimbleAgentRunResultTool(**common_kwargs),
                 ]
             )
 

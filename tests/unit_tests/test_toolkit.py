@@ -1,12 +1,27 @@
 """Unit tests for NimbleToolkit."""
 
+import pytest
+
 from langchain_nimble import NimbleToolkit
 from langchain_nimble.tools.agent_tool import (
     NimbleAgentGetTool,
     NimbleAgentListTool,
     NimbleAgentRunTool,
 )
+from langchain_nimble.tools.agents_v2_tool import (
+    NimbleAgentCreateTool,
+    NimbleAgentRunResultTool,
+    NimbleAgentRunStartTool,
+    NimbleAgentRunStatusTool,
+    NimbleAgentsListTool,
+    NimbleAgentTemplatesListTool,
+)
 from langchain_nimble.tools.crawl_tool import NimbleCrawlTool
+from langchain_nimble.tools.extract_template_tool import (
+    NimbleExtractTemplateGetTool,
+    NimbleExtractTemplateListTool,
+    NimbleExtractTemplateRunTool,
+)
 from langchain_nimble.tools.extract_tool import NimbleExtractTool
 from langchain_nimble.tools.map_tool import NimbleMapTool
 from langchain_nimble.tools.search_tool import NimbleSearchTool
@@ -23,25 +38,32 @@ def test_toolkit_default_tools() -> None:
 
 
 def test_toolkit_all_tools() -> None:
-    """Test toolkit returns all 7 tools when all flags enabled."""
+    """Test toolkit returns all tools when all modern flags enabled."""
     toolkit = NimbleToolkit(
         api_key="test_key",
         include_crawl=True,
         include_map=True,
-        include_agent=True,
+        include_extract_templates=True,
+        include_web_search_agents=True,
     )
     tools = toolkit.get_tools()
 
-    assert len(tools) == 7
+    assert len(tools) == 13
     tool_types = {type(t) for t in tools}
     assert tool_types == {
         NimbleSearchTool,
         NimbleExtractTool,
         NimbleCrawlTool,
         NimbleMapTool,
-        NimbleAgentListTool,
-        NimbleAgentGetTool,
-        NimbleAgentRunTool,
+        NimbleExtractTemplateListTool,
+        NimbleExtractTemplateGetTool,
+        NimbleExtractTemplateRunTool,
+        NimbleAgentsListTool,
+        NimbleAgentTemplatesListTool,
+        NimbleAgentCreateTool,
+        NimbleAgentRunStartTool,
+        NimbleAgentRunStatusTool,
+        NimbleAgentRunResultTool,
     }
 
 
@@ -77,7 +99,7 @@ def test_toolkit_passes_api_key() -> None:
         api_key="shared_key",
         include_crawl=True,
         include_map=True,
-        include_agent=True,
+        include_extract_templates=True,
     )
     tools = toolkit.get_tools()
 
@@ -114,15 +136,58 @@ def test_toolkit_passes_crawl_config() -> None:
     assert crawl_tools[0].timeout == 120.0
 
 
-def test_toolkit_agent_includes_three_tools() -> None:
-    """Test include_agent adds list, get, and run tools."""
+def test_toolkit_include_extract_templates() -> None:
+    """Test include_extract_templates adds three template tools."""
+    toolkit = NimbleToolkit(
+        api_key="test_key",
+        include_search=False,
+        include_extract=False,
+        include_extract_templates=True,
+    )
+    tools = toolkit.get_tools()
+
+    assert len(tools) == 3
+    tool_types = {type(t) for t in tools}
+    assert tool_types == {
+        NimbleExtractTemplateListTool,
+        NimbleExtractTemplateGetTool,
+        NimbleExtractTemplateRunTool,
+    }
+
+
+def test_toolkit_include_web_search_agents() -> None:
+    """Test include_web_search_agents adds six Agent API V2 tools."""
+    toolkit = NimbleToolkit(
+        api_key="test_key",
+        include_search=False,
+        include_extract=False,
+        include_web_search_agents=True,
+    )
+    tools = toolkit.get_tools()
+
+    assert len(tools) == 6
+    tool_names = {t.name for t in tools}
+    assert tool_names == {
+        "nimble_web_search_agents_list",
+        "nimble_web_search_agent_templates_list",
+        "nimble_web_search_agent_create",
+        "nimble_web_search_agent_run_start",
+        "nimble_web_search_agent_run_status",
+        "nimble_web_search_agent_run_result",
+    }
+
+
+def test_toolkit_deprecated_include_agent() -> None:
+    """Test include_agent warns and returns deprecated aliases."""
     toolkit = NimbleToolkit(
         api_key="test_key",
         include_search=False,
         include_extract=False,
         include_agent=True,
     )
-    tools = toolkit.get_tools()
+
+    with pytest.warns(DeprecationWarning, match="include_agent"):
+        tools = toolkit.get_tools()
 
     assert len(tools) == 3
     tool_types = {type(t) for t in tools}
@@ -133,13 +198,63 @@ def test_toolkit_agent_includes_three_tools() -> None:
     }
 
 
+def test_toolkit_extract_templates_preferred_over_include_agent() -> None:
+    """Test include_extract_templates wins over deprecated include_agent."""
+    toolkit = NimbleToolkit(
+        api_key="test_key",
+        include_search=False,
+        include_extract=False,
+        include_extract_templates=True,
+        include_agent=True,
+    )
+    with pytest.warns(DeprecationWarning, match="include_agent"):
+        tools = toolkit.get_tools()
+
+    assert len(tools) == 3
+    tool_names = {t.name for t in tools}
+    assert tool_names == {
+        "nimble_extract_template_list",
+        "nimble_extract_template_get",
+        "nimble_extract_template_run",
+    }
+
+
+def test_toolkit_include_agent_and_web_search_agents() -> None:
+    """Test dual flags warn and return aliases + V2 tools (disjoint names)."""
+    toolkit = NimbleToolkit(
+        api_key="test_key",
+        include_search=False,
+        include_extract=False,
+        include_agent=True,
+        include_web_search_agents=True,
+    )
+
+    with pytest.warns(DeprecationWarning, match="include_agent"):
+        tools = toolkit.get_tools()
+
+    assert len(tools) == 9
+    tool_names = {t.name for t in tools}
+    assert tool_names == {
+        "nimble_agent_list",
+        "nimble_agent_get",
+        "nimble_agent_run",
+        "nimble_web_search_agents_list",
+        "nimble_web_search_agent_templates_list",
+        "nimble_web_search_agent_create",
+        "nimble_web_search_agent_run_start",
+        "nimble_web_search_agent_run_status",
+        "nimble_web_search_agent_run_result",
+    }
+
+
 def test_toolkit_tool_names() -> None:
-    """Test all tools have expected names."""
+    """Test tools have expected names with modern flags."""
     toolkit = NimbleToolkit(
         api_key="test_key",
         include_crawl=True,
         include_map=True,
-        include_agent=True,
+        include_extract_templates=True,
+        include_web_search_agents=True,
     )
     tools = toolkit.get_tools()
     tool_names = {t.name for t in tools}
@@ -149,7 +264,13 @@ def test_toolkit_tool_names() -> None:
         "nimble_extract",
         "nimble_crawl",
         "nimble_map",
-        "nimble_agent_list",
-        "nimble_agent_get",
-        "nimble_agent_run",
+        "nimble_extract_template_list",
+        "nimble_extract_template_get",
+        "nimble_extract_template_run",
+        "nimble_web_search_agents_list",
+        "nimble_web_search_agent_templates_list",
+        "nimble_web_search_agent_create",
+        "nimble_web_search_agent_run_start",
+        "nimble_web_search_agent_run_status",
+        "nimble_web_search_agent_run_result",
     }

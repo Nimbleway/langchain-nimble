@@ -13,6 +13,8 @@ from nimble_python import APITimeoutError as NimbleTimeoutError
 from nimble_python import AsyncNimble, Nimble
 from pydantic import BaseModel, Field, SecretStr, model_validator
 
+_CLIENT_SOURCE = "langchain-nimble"
+
 
 class _NimbleClientMixin(BaseModel):
     """Mixin providing Nimble API client configuration and initialization.
@@ -55,7 +57,7 @@ class _NimbleClientMixin(BaseModel):
         client_kwargs: dict[str, object] = {
             "api_key": api_key,
             "max_retries": self.max_retries,
-            "default_headers": {"X-Client-Source": "langchain-nimble"},
+            "client_source": _CLIENT_SOURCE,
         }
         if self.nimble_api_url is not None:
             client_kwargs["base_url"] = self.nimble_api_url
@@ -63,6 +65,29 @@ class _NimbleClientMixin(BaseModel):
         self._sync_client = Nimble(**client_kwargs)  # type: ignore[arg-type]
         self._async_client = AsyncNimble(**client_kwargs)  # type: ignore[arg-type]
         return self
+
+
+def require_initialized_client(
+    tool_name: str,
+    client: object | None,
+    *,
+    sync: bool,
+) -> None:
+    """Raise ToolException when the SDK client is missing.
+
+    Args:
+        tool_name: Model-facing tool name for error context.
+        client: Sync or async Nimble client instance.
+        sync: Whether the missing client is the sync client.
+
+    Raises:
+        ToolException: If ``client`` is ``None``.
+    """
+    if client is not None:
+        return
+    kind = "sync" if sync else "async"
+    msg = f"{tool_name}: {kind} client not initialized"
+    raise ToolException(msg)
 
 
 @contextmanager

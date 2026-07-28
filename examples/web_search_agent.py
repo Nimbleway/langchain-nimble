@@ -1,7 +1,7 @@
 """Async multi-tool agent example using NimbleToolkit.
 
-This example demonstrates how to create an agent with all Nimble tools
-loaded via the NimbleToolkit.
+This example demonstrates how to create an agent with Search, Extract,
+Map, Crawl, and Extract Templates tools.
 
 Requirements:
     pip install langchain-nimble langchain langchain-anthropic
@@ -54,11 +54,11 @@ async def main() -> None:
         msg = "NIMBLE_API_KEY environment variable is required"
         raise ValueError(msg)
 
-    # Create all Nimble tools via the toolkit
+    # Create Nimble tools via the toolkit
     toolkit = NimbleToolkit(
         include_crawl=True,
         include_map=True,
-        include_agent=True,
+        include_extract_templates=True,
     )
     tools = toolkit.get_tools()
 
@@ -74,11 +74,13 @@ async def main() -> None:
             "- nimble_extract: Extract full content from a URL as markdown\n"
             "- nimble_map: Discover all URLs on a website\n"
             "- nimble_crawl: Crawl a website to extract multiple pages\n"
-            "- nimble_agent_list: List available Nimble agent templates\n"
-            "- nimble_agent_get: Get an agent's required parameters\n"
-            "- nimble_agent_run: Run an agent for structured data extraction\n\n"
-            "For agents: use nimble_agent_list to discover agents, "
-            "nimble_agent_get to check required params, then nimble_agent_run.\n\n"
+            "- nimble_extract_template_list: List Extract Templates "
+            "(structured site scraping)\n"
+            "- nimble_extract_template_get: Get a template's metadata\n"
+            "- nimble_extract_template_run: Run a template with params\n\n"
+            "For Extract Templates: use nimble_extract_template_list to discover "
+            "templates, nimble_extract_template_get to inspect one, then "
+            "nimble_extract_template_run.\n\n"
             "Always cite your sources and provide comprehensive, accurate answers."
         ),
     )
@@ -95,8 +97,8 @@ async def main() -> None:
                 "the key new features"
             ),
             (
-                "List the available Nimble agents and show me what parameters "
-                "the amazon_pdp agent requires"
+                "List available Nimble Extract Templates and show me details "
+                "for the amazon_pdp template if it exists"
             ),
         ]
 
