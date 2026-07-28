@@ -13,7 +13,7 @@ authors = []
 requires-python = ">=3.10.0,<4.0.0"
 dependencies = [
     "langchain-core>=1.2.5,<2.0.0",
-    "nimble_python>=1.0.0,<2.0.0",
+    "nimble_python>=1.2.0,<2.0.0",
 ]
 
 [project.urls]

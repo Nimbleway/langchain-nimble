@@ -102,7 +102,7 @@ uv run ruff format .
 ### Nimble SDK Introspection
 - Inspect SDK methods: `uv run python -c "from nimble_python import Nimble; import inspect; print(inspect.signature(Nimble(api_key='x').search))"`
 - Inspect response types: `uv run python -c "from nimble_python.types import SearchResponse; print(SearchResponse.model_fields)"`
-- Prefer `nimble_python>=1.0.0`: `search()`, `extract.run()`, `extract.templates.*`, `agents.*`, `map()`; `crawl.run()` needs polling via `crawl.status()`
+- Prefer `nimble_python>=1.2.0`: `search()`, `extract.run()`, `extract.templates.*`, `agents.*` (typed `agent_name`/`use_case`/`skill` on runs), `map()`; `crawl.run()` needs polling via `crawl.status()`
 - Agent API V2: `agents.runs.create` / `get` / `result` (resumable across turns)
 
 ---

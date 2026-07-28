@@ -4,7 +4,7 @@
 
 ### Breaking
 
-- Require `nimble_python>=1.0.0,<2.0.0` (incompatible with trees pinned to 0.x)
+- Require `nimble_python>=1.2.0,<2.0.0` (incompatible with trees pinned to 0.x or 1.0/1.1)
 - URL extract paths call `client.extract.run(...)` (SDK 1.x resource API)
 - Deprecated `NimbleAgentListTool` no longer accepts `search` / `managed_by` / `privacy` (Extract Templates list has no equivalent filters)
 - Deprecated `NimbleAgentListTool` / `NimbleAgentGetTool` return Extract Templates shapes (no legacy `managed_by` / `description` / `is_public` / `input_properties`)
@@ -34,6 +34,6 @@
 - Agent API V2 tools are resumable; they do not poll inside one call
 - Failed Agent API V2 results raise `ToolException` (aligned with Extract Template non-success handling)
 - Default bootstrap for LangChain: **Mode 1** (`agent_name`) because tool sessions are typically stateless; Mode 2 when the host persists `wsa_…`
-- `agent_name` / `use_case` / `skill` on run start use SDK `extra_body` until `nimble_python` types them on `agents.run` / `agents.runs.create`
+- `agent_name` / `use_case` / `skill` are typed kwargs on `agents.run` / `agents.runs.create` (`nimble_python>=1.2.0`)
 - SSE `/events` tool is an intentional gap (pass `enable_events` if you consume events outside this package)
 - Ticket DoD slug `langchain` vs playbook `langchain-nimble`: package uses **`langchain-nimble`**

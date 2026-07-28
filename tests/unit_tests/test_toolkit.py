@@ -219,8 +219,8 @@ def test_toolkit_extract_templates_preferred_over_include_agent() -> None:
     }
 
 
-def test_toolkit_include_agent_and_web_search_agents_no_aliases() -> None:
-    """Test dual flags warn and only V2 tools appear (no deprecated aliases)."""
+def test_toolkit_include_agent_and_web_search_agents() -> None:
+    """Test dual flags warn and return aliases + V2 tools (disjoint names)."""
     toolkit = NimbleToolkit(
         api_key="test_key",
         include_search=False,
@@ -229,15 +229,15 @@ def test_toolkit_include_agent_and_web_search_agents_no_aliases() -> None:
         include_web_search_agents=True,
     )
 
-    with pytest.warns(DeprecationWarning) as recorded:
+    with pytest.warns(DeprecationWarning, match="include_agent"):
         tools = toolkit.get_tools()
 
-    warning_text = " ".join(str(w.message) for w in recorded)
-    assert "include_agent" in warning_text
-    assert "nimble_agent_*" in warning_text or "ignored" in warning_text
-
+    assert len(tools) == 9
     tool_names = {t.name for t in tools}
     assert tool_names == {
+        "nimble_agent_list",
+        "nimble_agent_get",
+        "nimble_agent_run",
         "nimble_web_search_agents_list",
         "nimble_web_search_agent_templates_list",
         "nimble_web_search_agent_create",
@@ -245,8 +245,6 @@ def test_toolkit_include_agent_and_web_search_agents_no_aliases() -> None:
         "nimble_web_search_agent_run_status",
         "nimble_web_search_agent_run_result",
     }
-    assert "nimble_agent_list" not in tool_names
-    assert "nimble_agent_run" not in tool_names
 
 
 def test_toolkit_tool_names() -> None:

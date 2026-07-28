@@ -617,9 +617,9 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
     ``web_search_agent_id`` (``wsa_…``). Use status/result across turns —
     do not poll inside one call. Runs may take 3-15 minutes.
 
-    ``nimble_python`` 1.1.x types Mode 2 as ``agents.runs.create`` and Mode
-    1/3 as ``agents.run``; ``agent_name`` / ``use_case`` / ``skill`` on the
-    run body are sent via ``extra_body`` until the SDK exposes them.
+    Mode 2 uses ``agents.runs.create``; Mode 1/3 use ``agents.run``.
+    ``agent_name`` / ``use_case`` / ``skill`` are typed kwargs on
+    ``nimble_python>=1.2.0``.
 
     Args:
         api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
@@ -641,10 +641,14 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
     args_schema: type[BaseModel] = NimbleAgentRunStartToolInput
     handle_tool_error: bool = True
 
-    def _build_typed_run_kwargs(
+    def _build_run_kwargs(
         self,
         input: str,  # noqa: A002
         *,
+        agent_id: str | None,
+        agent_name: str | None,
+        use_case: AgentUseCase | None,
+        skill: str | None,
         effort: AgentEffort | None,
         sources: dict[str, Any] | None,
         output_schema: dict[str, Any] | None,
@@ -652,10 +656,14 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
         enable_events: bool | None,
         previous_interaction_id: str | None,
     ) -> dict[str, Any]:
-        """Build kwargs already typed on the SDK run helpers.
+        """Build kwargs for ``agents.run`` / ``agents.runs.create``.
 
         Args:
             input: Research prompt / input.
+            agent_id: Mode 2 agent id (when set, omit agent_name).
+            agent_name: Mode 1 create-or-reuse name.
+            use_case: Optional use case (locked after create).
+            skill: Optional domain expertise.
             effort: Optional effort level.
             sources: Optional source guidance.
             output_schema: Optional JSON Schema override.
@@ -664,9 +672,16 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
             previous_interaction_id: Optional conversation continuation id.
 
         Returns:
-            Keyword arguments shared by ``agents.run`` and ``agents.runs.create``.
+            Keyword arguments for the SDK run helpers.
         """
         kwargs: dict[str, Any] = {"input": input}
+        # Mode 2 path ignores agent_name; omit it to avoid confusion.
+        if agent_id is None and agent_name is not None:
+            kwargs["agent_name"] = agent_name
+        if use_case is not None:
+            kwargs["use_case"] = use_case
+        if skill is not None:
+            kwargs["skill"] = skill
         if effort is not None:
             kwargs["effort"] = effort
         if sources is not None:
@@ -680,34 +695,6 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
         if previous_interaction_id is not None:
             kwargs["previous_interaction_id"] = previous_interaction_id
         return kwargs
-
-    def _build_extra_body(
-        self,
-        *,
-        agent_id: str | None,
-        agent_name: str | None,
-        use_case: AgentUseCase | None,
-        skill: str | None,
-    ) -> dict[str, Any] | None:
-        """Build extra_body for fields not yet typed on SDK run methods.
-
-        Args:
-            agent_id: Mode 2 agent id (when set, agent_name is ignored).
-            agent_name: Mode 1 create-or-reuse name.
-            use_case: Optional use case (locked after create).
-            skill: Optional domain expertise override.
-
-        Returns:
-            Extra JSON body fields, or ``None`` when empty.
-        """
-        extra: dict[str, Any] = {}
-        if agent_id is None and agent_name is not None:
-            extra["agent_name"] = agent_name
-        if use_case is not None:
-            extra["use_case"] = use_case
-        if skill is not None:
-            extra["skill"] = skill
-        return extra or None
 
     def _run(
         self,
@@ -744,8 +731,12 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
         """
         require_initialized_client(self.name, self._sync_client, sync=True)
 
-        typed_kwargs = self._build_typed_run_kwargs(
+        run_kwargs = self._build_run_kwargs(
             input=input,
+            agent_id=agent_id,
+            agent_name=agent_name,
+            use_case=use_case,
+            skill=skill,
             effort=effort,
             sources=sources,
             output_schema=output_schema,
@@ -753,23 +744,15 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
             enable_events=enable_events,
             previous_interaction_id=previous_interaction_id,
         )
-        extra_body = self._build_extra_body(
-            agent_id=agent_id,
-            agent_name=agent_name,
-            use_case=use_case,
-            skill=skill,
-        )
-        if extra_body is not None:
-            typed_kwargs["extra_body"] = extra_body
 
         with handle_api_errors(operation="agent run start"):
             if agent_id:
                 response = self._sync_client.agents.runs.create(  # type: ignore[union-attr]
                     agent_id,
-                    **typed_kwargs,
+                    **run_kwargs,
                 )
             else:
-                response = self._sync_client.agents.run(**typed_kwargs)  # type: ignore[union-attr]
+                response = self._sync_client.agents.run(**run_kwargs)  # type: ignore[union-attr]
             return response.model_dump(mode="json")
 
     async def _arun(
@@ -807,8 +790,12 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
         """
         require_initialized_client(self.name, self._async_client, sync=False)
 
-        typed_kwargs = self._build_typed_run_kwargs(
+        run_kwargs = self._build_run_kwargs(
             input=input,
+            agent_id=agent_id,
+            agent_name=agent_name,
+            use_case=use_case,
+            skill=skill,
             effort=effort,
             sources=sources,
             output_schema=output_schema,
@@ -816,23 +803,15 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
             enable_events=enable_events,
             previous_interaction_id=previous_interaction_id,
         )
-        extra_body = self._build_extra_body(
-            agent_id=agent_id,
-            agent_name=agent_name,
-            use_case=use_case,
-            skill=skill,
-        )
-        if extra_body is not None:
-            typed_kwargs["extra_body"] = extra_body
 
         with handle_api_errors(operation="agent run start"):
             if agent_id:
                 response = await self._async_client.agents.runs.create(  # type: ignore[union-attr]
                     agent_id,
-                    **typed_kwargs,
+                    **run_kwargs,
                 )
             else:
-                response = await self._async_client.agents.run(**typed_kwargs)  # type: ignore[union-attr]
+                response = await self._async_client.agents.run(**run_kwargs)  # type: ignore[union-attr]
             return response.model_dump(mode="json")
 
 

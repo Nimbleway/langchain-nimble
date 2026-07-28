@@ -145,14 +145,14 @@ def test_agent_run_start_mode2() -> None:
     call_kwargs = mock_create.call_args.kwargs
     assert call_kwargs["input"] == "Research AI agents"
     assert call_kwargs["effort"] == "medium"
-    assert call_kwargs["extra_body"] == {
-        "use_case": "research",
-        "skill": "Focus on primary sources",
-    }
+    assert call_kwargs["use_case"] == "research"
+    assert call_kwargs["skill"] == "Focus on primary sources"
+    assert "agent_name" not in call_kwargs
+    assert "extra_body" not in call_kwargs
 
 
 def test_agent_run_start_mode1_agent_name() -> None:
-    """Test Mode 1 start uses agents.run with agent_name in extra_body."""
+    """Test Mode 1 start uses agents.run with typed agent_name kwargs."""
     tool = NimbleAgentRunStartTool(api_key="test_key")
     mock_response = MagicMock()
     mock_response.model_dump.return_value = {
@@ -180,11 +180,10 @@ def test_agent_run_start_mode1_agent_name() -> None:
     assert call_kwargs["input"] == "Summarize Agent API v2"
     assert call_kwargs["effort"] == "medium"
     assert call_kwargs["sources"]["prioritize"] == "official docs"
-    assert call_kwargs["extra_body"] == {
-        "agent_name": "integrations_research_bot",
-        "use_case": "research",
-        "skill": "Integrator-focused docs",
-    }
+    assert call_kwargs["agent_name"] == "integrations_research_bot"
+    assert call_kwargs["use_case"] == "research"
+    assert call_kwargs["skill"] == "Integrator-focused docs"
+    assert "extra_body" not in call_kwargs
 
 
 def test_agent_run_start_mode3_anonymous() -> None:
@@ -206,6 +205,7 @@ def test_agent_run_start_mode3_anonymous() -> None:
     assert result["web_search_agent_id"] == "wsa_anon"
     call_kwargs = mock_run.call_args.kwargs
     assert call_kwargs["input"] == "Quick one-shot research"
+    assert "agent_name" not in call_kwargs
     assert "extra_body" not in call_kwargs
 
 

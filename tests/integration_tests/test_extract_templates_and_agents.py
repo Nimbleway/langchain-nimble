@@ -114,17 +114,18 @@ def _first_runnable_template(
     if not templates:
         pytest.skip("No extract templates available for this account")
 
-    # Prefer URL PDP templates — more likely executable on this account.
-    ordered = sorted(
-        templates,
-        key=lambda item: (
-            0
-            if isinstance(item, dict)
-            and isinstance(item.get("name"), str)
-            and str(item["name"]).endswith("_pdp")
-            else 1
-        ),
-    )
+    def _rank(item: object) -> tuple[int, str]:
+        if not isinstance(item, dict) or not isinstance(item.get("name"), str):
+            return (9, "")
+        name = str(item["name"])
+        # Prefer known-good public-ish PDPs before obscure account templates.
+        if name.startswith("amazon_") and name.endswith("_pdp"):
+            return (0, name)
+        if name.endswith("_pdp"):
+            return (1, name)
+        return (2, name)
+
+    ordered = sorted(templates, key=_rank)
 
     for item in ordered:
         if not isinstance(item, dict):
@@ -141,10 +142,9 @@ def _first_runnable_template(
             continue
         try:
             result = run_tool._run(template=name, params=params)
-        except ToolException as exc:
-            if "404" in str(exc) or "Template not found" in str(exc):
-                continue
-            raise
+        except ToolException:
+            # Probe only: listed templates may be unrunnable for this account.
+            continue
         if isinstance(result, dict) and result.get("status") == "success":
             return name, params, result
 
@@ -229,21 +229,33 @@ def test_agents_list_live(api_key: str) -> None:
 def test_agent_run_start_and_status_live(api_key: str) -> None:
     """Live smoke: Mode 2 start + status when an agent already exists."""
     list_tool = NimbleAgentsListTool(api_key=api_key)
-    agents = list_tool.invoke({"limit": 5})
+    agents = list_tool.invoke({"limit": 20})
     if not agents:
         pytest.skip("No Web Search Agents available for this account")
 
-    agent_id = agents[0].get("id")
-    if not agent_id:
+    # Prefer research agents so effort=low is valid (dataset_building needs high+).
+    agent: dict[str, Any] | None = None
+    for item in agents:
+        if (
+            isinstance(item, dict)
+            and item.get("id")
+            and item.get("use_case") in (None, "research", "enrichment")
+        ):
+            agent = item
+            break
+    if agent is None:
+        agent = agents[0] if isinstance(agents[0], dict) else None
+    if not agent or not agent.get("id"):
         pytest.skip("Agent list item missing id")
 
+    agent_id = agent["id"]
+    effort = "high" if agent.get("use_case") == "dataset_building" else "low"
+
     start_tool = NimbleAgentRunStartTool(api_key=api_key)
-    started = start_tool.invoke(
-        {
-            "agent_id": agent_id,
-            "input": "Say hello in one short sentence.",
-            "effort": "low",
-        }
+    started = start_tool._run(
+        input="Say hello in one short sentence.",
+        agent_id=str(agent_id),
+        effort=effort,  # type: ignore[arg-type]
     )
 
     assert isinstance(started, dict)
@@ -262,16 +274,22 @@ def test_agent_run_start_and_status_live(api_key: str) -> None:
 
 @pytest.mark.expensive
 def test_agent_run_start_mode1_live(api_key: str) -> None:
-    """Live smoke: Mode 1 agent_name create-or-reuse + status."""
+    """Live smoke: Mode 1 create-or-reuse + status + persisted fields.
+
+    Round-trip via ``agents.get`` guards that typed run kwargs
+    (``agent_name`` / ``use_case`` / ``skill``) actually persisted.
+    """
+    agent_name = "langchain_nimble_mode1_smoke"
+    use_case = "research"
+    skill = "One short sentence; prefer official docs"
+
     start_tool = NimbleAgentRunStartTool(api_key=api_key)
-    started = start_tool.invoke(
-        {
-            "agent_name": "langchain_nimble_mode1_smoke",
-            "use_case": "research",
-            "effort": "low",
-            "skill": "One short sentence; prefer official docs",
-            "input": "Say hello in one short sentence.",
-        }
+    started = start_tool._run(
+        input="Say hello in one short sentence.",
+        agent_name=agent_name,
+        use_case=use_case,
+        effort="low",
+        skill=skill,
     )
 
     assert isinstance(started, dict)
@@ -280,6 +298,14 @@ def test_agent_run_start_mode1_live(api_key: str) -> None:
     assert run_id, f"Expected run id: {started}"
     assert agent_id, f"Expected web_search_agent_id: {started}"
     assert str(agent_id).startswith("wsa_")
+
+    # Persist check: fail loudly if SDK/API stops honoring typed create-or-reuse fields.
+    assert start_tool._sync_client is not None
+    agent = start_tool._sync_client.agents.get(agent_id)
+    agent_payload = agent.model_dump(mode="json")
+    assert agent_payload.get("agent_name") == agent_name
+    assert agent_payload.get("use_case") == use_case
+    assert agent_payload.get("skill") == skill
 
     status_tool = NimbleAgentRunStatusTool(api_key=api_key)
     status = status_tool.invoke({"agent_id": agent_id, "run_id": run_id})
