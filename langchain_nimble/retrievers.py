@@ -210,7 +210,7 @@ class NimbleExtractRetriever(_NimbleClientMixin, BaseRetriever):
     wait: int | None = None
 
     def _build_extract_kwargs(self, query: str, **kwargs: Any) -> dict[str, Any]:
-        """Build keyword arguments for SDK extract() call."""
+        """Build keyword arguments for SDK extract.run() call."""
         extract_kwargs: dict[str, Any] = {
             "url": query,
             "locale": kwargs.get("locale", self.locale),

@@ -210,10 +210,11 @@ Resumable research agents. Start returns immediately with a run id; poll status 
 ```python
 from langchain_nimble import NimbleToolkit
 
-toolkit = NimbleToolkit(include_agents=True)
+toolkit = NimbleToolkit(include_web_search_agents=True)
 tools = toolkit.get_tools()
-# nimble_agents_list, nimble_agent_templates_list, nimble_agent_create,
-# nimble_agent_run_start, nimble_agent_run_status, nimble_agent_run_result
+# nimble_web_search_agents_list, nimble_web_search_agent_templates_list,
+# nimble_web_search_agent_create, nimble_web_search_agent_run_start,
+# nimble_web_search_agent_run_status, nimble_web_search_agent_run_result
 ```
 
 ### Multi-Tool Agent

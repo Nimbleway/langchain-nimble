@@ -4,21 +4,29 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from langchain_core.tools import BaseTool
+from langchain_core.tools import BaseTool, ToolException
 from pydantic import BaseModel, Field
 
-from langchain_nimble._utilities import _NimbleClientMixin, handle_api_errors
+from langchain_nimble._utilities import (
+    _NimbleClientMixin,
+    handle_api_errors,
+    require_initialized_client,
+)
 
 AgentEffort = Literal["low", "medium", "high", "x-high", "max"]
 AgentUseCase = Literal["research", "enrichment", "dataset_building"]
 
+
 # ───────────────────────────────────────────────────────────────
-# nimble_agents_list
+# nimble_web_search_agents_list
 # ───────────────────────────────────────────────────────────────
 
 
 class NimbleAgentsListToolInput(BaseModel):
-    """Input schema for NimbleAgentsListTool."""
+    """Input schema for NimbleAgentsListTool.
+
+    Accepts optional pagination and workspace filters for listing agents.
+    """
 
     limit: int | None = Field(
         default=None,
@@ -46,11 +54,11 @@ class NimbleAgentsListTool(_NimbleClientMixin, BaseTool):
         max_retries: Maximum retry attempts for 5xx errors (default: 2).
     """
 
-    name: str = "nimble_agents_list"
+    name: str = "nimble_web_search_agents_list"
     description: str = (
         "List Nimble Web Search Agents (Agent API V2 research agents). "
         "Returns agent ids (often wsa_…) and metadata. Use before "
-        "nimble_agent_run_start. This is NOT Extract Templates — use "
+        "nimble_web_search_agent_run_start. This is NOT Extract Templates — use "
         "nimble_extract_template_list for structured site scraping."
     )
     args_schema: type[BaseModel] = NimbleAgentsListToolInput
@@ -63,7 +71,16 @@ class NimbleAgentsListTool(_NimbleClientMixin, BaseTool):
         offset: int | None,
         workspace_id: str | None,
     ) -> dict[str, Any]:
-        """Build keyword arguments for agents.list()."""
+        """Build keyword arguments for agents.list().
+
+        Args:
+            limit: Maximum number of agents to return.
+            offset: Pagination offset.
+            workspace_id: Optional workspace filter.
+
+        Returns:
+            Keyword arguments accepted by ``agents.list``.
+        """
         kwargs: dict[str, Any] = {}
         if limit is not None:
             kwargs["limit"] = limit
@@ -80,10 +97,17 @@ class NimbleAgentsListTool(_NimbleClientMixin, BaseTool):
         offset: int | None = None,
         workspace_id: str | None = None,
     ) -> list[dict[str, Any]]:
-        """List agents synchronously."""
-        if self._sync_client is None:
-            msg = "Sync client not initialized"
-            raise RuntimeError(msg)
+        """List agents synchronously.
+
+        Args:
+            limit: Maximum number of agents to return.
+            offset: Pagination offset.
+            workspace_id: Optional workspace filter.
+
+        Returns:
+            List of agent records as dictionaries.
+        """
+        require_initialized_client(self.name, self._sync_client, sync=True)
 
         list_kwargs = self._build_list_kwargs(
             limit=limit,
@@ -92,7 +116,7 @@ class NimbleAgentsListTool(_NimbleClientMixin, BaseTool):
         )
 
         with handle_api_errors(operation="agents list"):
-            response = self._sync_client.agents.list(**list_kwargs)
+            response = self._sync_client.agents.list(**list_kwargs)  # type: ignore[union-attr]
             return [item.model_dump(mode="json") for item in response.items]
 
     async def _arun(
@@ -102,10 +126,17 @@ class NimbleAgentsListTool(_NimbleClientMixin, BaseTool):
         offset: int | None = None,
         workspace_id: str | None = None,
     ) -> list[dict[str, Any]]:
-        """List agents asynchronously."""
-        if self._async_client is None:
-            msg = "Async client not initialized"
-            raise RuntimeError(msg)
+        """List agents asynchronously.
+
+        Args:
+            limit: Maximum number of agents to return.
+            offset: Pagination offset.
+            workspace_id: Optional workspace filter.
+
+        Returns:
+            List of agent records as dictionaries.
+        """
+        require_initialized_client(self.name, self._async_client, sync=False)
 
         list_kwargs = self._build_list_kwargs(
             limit=limit,
@@ -114,17 +145,20 @@ class NimbleAgentsListTool(_NimbleClientMixin, BaseTool):
         )
 
         with handle_api_errors(operation="agents list"):
-            response = await self._async_client.agents.list(**list_kwargs)
+            response = await self._async_client.agents.list(**list_kwargs)  # type: ignore[union-attr]
             return [item.model_dump(mode="json") for item in response.items]
 
 
 # ───────────────────────────────────────────────────────────────
-# nimble_agent_templates_list
+# nimble_web_search_agent_templates_list
 # ───────────────────────────────────────────────────────────────
 
 
 class NimbleAgentTemplatesListToolInput(BaseModel):
-    """Input schema for NimbleAgentTemplatesListTool."""
+    """Input schema for NimbleAgentTemplatesListTool.
+
+    Accepts optional pagination for listing Web Search Agent templates.
+    """
 
     limit: int | None = Field(
         default=None,
@@ -139,7 +173,8 @@ class NimbleAgentTemplatesListToolInput(BaseModel):
 class NimbleAgentTemplatesListTool(_NimbleClientMixin, BaseTool):
     """List Nimble Web Search Agent templates (Agent API V2).
 
-    Templates can be used with ``nimble_agent_create`` to instantiate an agent.
+    Templates can be used with ``nimble_web_search_agent_create`` to instantiate
+    an agent.
 
     Args:
         api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
@@ -147,11 +182,11 @@ class NimbleAgentTemplatesListTool(_NimbleClientMixin, BaseTool):
         max_retries: Maximum retry attempts for 5xx errors (default: 2).
     """
 
-    name: str = "nimble_agent_templates_list"
+    name: str = "nimble_web_search_agent_templates_list"
     description: str = (
         "List Nimble Web Search Agent templates (Agent API V2). Use these "
-        "template names with nimble_agent_create to create a research agent. "
-        "This is distinct from Extract Templates "
+        "template names with nimble_web_search_agent_create to create a "
+        "research agent. This is distinct from Extract Templates "
         "(nimble_extract_template_list)."
     )
     args_schema: type[BaseModel] = NimbleAgentTemplatesListToolInput
@@ -163,7 +198,15 @@ class NimbleAgentTemplatesListTool(_NimbleClientMixin, BaseTool):
         limit: int | None,
         offset: int | None,
     ) -> dict[str, Any]:
-        """Build keyword arguments for agents.templates.list()."""
+        """Build keyword arguments for agents.templates.list().
+
+        Args:
+            limit: Maximum number of templates to return.
+            offset: Pagination offset.
+
+        Returns:
+            Keyword arguments accepted by ``agents.templates.list``.
+        """
         kwargs: dict[str, Any] = {}
         if limit is not None:
             kwargs["limit"] = limit
@@ -177,15 +220,21 @@ class NimbleAgentTemplatesListTool(_NimbleClientMixin, BaseTool):
         limit: int | None = None,
         offset: int | None = None,
     ) -> list[dict[str, Any]]:
-        """List agent templates synchronously."""
-        if self._sync_client is None:
-            msg = "Sync client not initialized"
-            raise RuntimeError(msg)
+        """List agent templates synchronously.
+
+        Args:
+            limit: Maximum number of templates to return.
+            offset: Pagination offset.
+
+        Returns:
+            List of template records as dictionaries.
+        """
+        require_initialized_client(self.name, self._sync_client, sync=True)
 
         list_kwargs = self._build_list_kwargs(limit=limit, offset=offset)
 
         with handle_api_errors(operation="agent templates list"):
-            response = self._sync_client.agents.templates.list(**list_kwargs)
+            response = self._sync_client.agents.templates.list(**list_kwargs)  # type: ignore[union-attr]
             return [item.model_dump(mode="json") for item in response.items]
 
     async def _arun(
@@ -194,25 +243,35 @@ class NimbleAgentTemplatesListTool(_NimbleClientMixin, BaseTool):
         limit: int | None = None,
         offset: int | None = None,
     ) -> list[dict[str, Any]]:
-        """List agent templates asynchronously."""
-        if self._async_client is None:
-            msg = "Async client not initialized"
-            raise RuntimeError(msg)
+        """List agent templates asynchronously.
+
+        Args:
+            limit: Maximum number of templates to return.
+            offset: Pagination offset.
+
+        Returns:
+            List of template records as dictionaries.
+        """
+        require_initialized_client(self.name, self._async_client, sync=False)
 
         list_kwargs = self._build_list_kwargs(limit=limit, offset=offset)
 
         with handle_api_errors(operation="agent templates list"):
-            response = await self._async_client.agents.templates.list(**list_kwargs)
+            response = await self._async_client.agents.templates.list(**list_kwargs)  # type: ignore[union-attr]
             return [item.model_dump(mode="json") for item in response.items]
 
 
 # ───────────────────────────────────────────────────────────────
-# nimble_agent_create
+# nimble_web_search_agent_create
 # ───────────────────────────────────────────────────────────────
 
 
 class NimbleAgentCreateToolInput(BaseModel):
-    """Input schema for NimbleAgentCreateTool."""
+    """Input schema for NimbleAgentCreateTool.
+
+    Optional fields for creating a Web Search Agent from a template or custom
+    configuration.
+    """
 
     template: str | None = Field(
         default=None,
@@ -247,8 +306,9 @@ class NimbleAgentCreateToolInput(BaseModel):
 class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
     """Create a Nimble Web Search Agent (Agent API V2).
 
-    Prefer creating from a template listed by ``nimble_agent_templates_list``.
-    Returns an agent id (often ``wsa_…``) for later run start/status/result calls.
+    Prefer creating from a template listed by
+    ``nimble_web_search_agent_templates_list``. Returns an agent id (often
+    ``wsa_…``) for later run start/status/result calls.
 
     Args:
         api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
@@ -256,12 +316,12 @@ class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
         max_retries: Maximum retry attempts for 5xx errors (default: 2).
     """
 
-    name: str = "nimble_agent_create"
+    name: str = "nimble_web_search_agent_create"
     description: str = (
         "Create a Nimble Web Search Agent (Agent API V2). Optionally pass a "
-        "template from nimble_agent_templates_list. Returns an agent id "
-        "(often wsa_…) for nimble_agent_run_start. This is research agent "
-        "creation, not Extract Templates."
+        "template from nimble_web_search_agent_templates_list. Returns an "
+        "agent id (often wsa_…) for nimble_web_search_agent_run_start. This "
+        "is research agent creation, not Extract Templates."
     )
     args_schema: type[BaseModel] = NimbleAgentCreateToolInput
     handle_tool_error: bool = True
@@ -277,7 +337,20 @@ class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
         use_case: AgentUseCase | None,
         goals: list[str] | None,
     ) -> dict[str, Any]:
-        """Build keyword arguments for agents.create()."""
+        """Build keyword arguments for agents.create().
+
+        Args:
+            template: Optional template name to create from.
+            agent_name: Optional unique agent name.
+            display_name: Optional display name.
+            description: Optional description.
+            effort: Optional default effort level.
+            use_case: Optional use case.
+            goals: Optional list of goals.
+
+        Returns:
+            Keyword arguments accepted by ``agents.create``.
+        """
         kwargs: dict[str, Any] = {}
         if template is not None:
             kwargs["template"] = template
@@ -306,10 +379,21 @@ class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
         use_case: AgentUseCase | None = None,
         goals: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Create an agent synchronously."""
-        if self._sync_client is None:
-            msg = "Sync client not initialized"
-            raise RuntimeError(msg)
+        """Create an agent synchronously.
+
+        Args:
+            template: Optional template name to create from.
+            agent_name: Optional unique agent name.
+            display_name: Optional display name.
+            description: Optional description.
+            effort: Optional default effort level.
+            use_case: Optional use case.
+            goals: Optional list of goals.
+
+        Returns:
+            Created agent record as a dictionary.
+        """
+        require_initialized_client(self.name, self._sync_client, sync=True)
 
         create_kwargs = self._build_create_kwargs(
             template=template,
@@ -322,7 +406,7 @@ class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
         )
 
         with handle_api_errors(operation="agent create"):
-            response = self._sync_client.agents.create(**create_kwargs)
+            response = self._sync_client.agents.create(**create_kwargs)  # type: ignore[union-attr]
             return response.model_dump(mode="json")
 
     async def _arun(
@@ -336,10 +420,21 @@ class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
         use_case: AgentUseCase | None = None,
         goals: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Create an agent asynchronously."""
-        if self._async_client is None:
-            msg = "Async client not initialized"
-            raise RuntimeError(msg)
+        """Create an agent asynchronously.
+
+        Args:
+            template: Optional template name to create from.
+            agent_name: Optional unique agent name.
+            display_name: Optional display name.
+            description: Optional description.
+            effort: Optional default effort level.
+            use_case: Optional use case.
+            goals: Optional list of goals.
+
+        Returns:
+            Created agent record as a dictionary.
+        """
+        require_initialized_client(self.name, self._async_client, sync=False)
 
         create_kwargs = self._build_create_kwargs(
             template=template,
@@ -352,22 +447,26 @@ class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
         )
 
         with handle_api_errors(operation="agent create"):
-            response = await self._async_client.agents.create(**create_kwargs)
+            response = await self._async_client.agents.create(**create_kwargs)  # type: ignore[union-attr]
             return response.model_dump(mode="json")
 
 
 # ───────────────────────────────────────────────────────────────
-# nimble_agent_run_start
+# nimble_web_search_agent_run_start
 # ───────────────────────────────────────────────────────────────
 
 
 class NimbleAgentRunStartToolInput(BaseModel):
-    """Input schema for NimbleAgentRunStartTool."""
+    """Input schema for NimbleAgentRunStartTool.
+
+    Starts a resumable Web Search Agent run without waiting for completion.
+    """
 
     agent_id: str = Field(
         description="""The Nimble Web Search Agent id to run.
 
-        Typically a wsa_… id from nimble_agents_list or nimble_agent_create.
+        Typically a wsa_… id from nimble_web_search_agents_list or
+        nimble_web_search_agent_create.
         """,
     )
     input: str = Field(
@@ -382,8 +481,10 @@ class NimbleAgentRunStartToolInput(BaseModel):
 class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
     """Start a Nimble Web Search Agent run (does not wait for completion).
 
-    Returns immediately with a run id. Use ``nimble_agent_run_status`` and
-    ``nimble_agent_run_result`` across turns — do not poll inside one call.
+    Returns immediately with a run id. Use
+    ``nimble_web_search_agent_run_status`` and
+    ``nimble_web_search_agent_run_result`` across turns — do not poll inside
+    one call.
 
     Args:
         api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
@@ -391,12 +492,14 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
         max_retries: Maximum retry attempts for 5xx errors (default: 2).
     """
 
-    name: str = "nimble_agent_run_start"
+    name: str = "nimble_web_search_agent_run_start"
     description: str = (
         "Start a Nimble Web Search Agent run (Agent API V2). Returns "
-        "immediately with a run id — does NOT wait for completion. Later "
-        "call nimble_agent_run_status and nimble_agent_run_result across "
-        "turns. Distinct from Extract Templates (nimble_extract_template_run)."
+        "immediately with a payload where id is the run_id and "
+        "web_search_agent_id is the agent_id — does NOT wait for completion. "
+        "Later call nimble_web_search_agent_run_status and "
+        "nimble_web_search_agent_run_result across turns. Distinct from "
+        "Extract Templates (nimble_extract_template_run)."
     )
     args_schema: type[BaseModel] = NimbleAgentRunStartToolInput
     handle_tool_error: bool = True
@@ -408,7 +511,16 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
         *,
         effort: AgentEffort | None,
     ) -> dict[str, Any]:
-        """Build keyword arguments for agents.runs.create()."""
+        """Build keyword arguments for agents.runs.create().
+
+        Args:
+            agent_id: Web Search Agent id to run.
+            input: Research prompt / input.
+            effort: Optional effort level.
+
+        Returns:
+            Keyword arguments accepted by ``agents.runs.create``.
+        """
         kwargs: dict[str, Any] = {
             "agent_id": agent_id,
             "input": input,
@@ -424,10 +536,17 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
         *,
         effort: AgentEffort | None = None,
     ) -> dict[str, Any]:
-        """Start an agent run synchronously."""
-        if self._sync_client is None:
-            msg = "Sync client not initialized"
-            raise RuntimeError(msg)
+        """Start an agent run synchronously.
+
+        Args:
+            agent_id: Web Search Agent id to run.
+            input: Research prompt / input.
+            effort: Optional effort level.
+
+        Returns:
+            Run create payload (``id`` = run_id, ``web_search_agent_id``).
+        """
+        require_initialized_client(self.name, self._sync_client, sync=True)
 
         start_kwargs = self._build_start_kwargs(
             agent_id=agent_id,
@@ -436,7 +555,7 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
         )
 
         with handle_api_errors(operation="agent run start"):
-            response = self._sync_client.agents.runs.create(**start_kwargs)
+            response = self._sync_client.agents.runs.create(**start_kwargs)  # type: ignore[union-attr]
             return response.model_dump(mode="json")
 
     async def _arun(
@@ -446,10 +565,17 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
         *,
         effort: AgentEffort | None = None,
     ) -> dict[str, Any]:
-        """Start an agent run asynchronously."""
-        if self._async_client is None:
-            msg = "Async client not initialized"
-            raise RuntimeError(msg)
+        """Start an agent run asynchronously.
+
+        Args:
+            agent_id: Web Search Agent id to run.
+            input: Research prompt / input.
+            effort: Optional effort level.
+
+        Returns:
+            Run create payload (``id`` = run_id, ``web_search_agent_id``).
+        """
+        require_initialized_client(self.name, self._async_client, sync=False)
 
         start_kwargs = self._build_start_kwargs(
             agent_id=agent_id,
@@ -458,23 +584,33 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
         )
 
         with handle_api_errors(operation="agent run start"):
-            response = await self._async_client.agents.runs.create(**start_kwargs)
+            response = await self._async_client.agents.runs.create(**start_kwargs)  # type: ignore[union-attr]
             return response.model_dump(mode="json")
 
 
 # ───────────────────────────────────────────────────────────────
-# nimble_agent_run_status
+# nimble_web_search_agent_run_status
 # ───────────────────────────────────────────────────────────────
 
 
 class NimbleAgentRunStatusToolInput(BaseModel):
-    """Input schema for NimbleAgentRunStatusTool."""
+    """Input schema for NimbleAgentRunStatusTool.
+
+    Uses ids from the start response: ``agent_id`` =
+    ``web_search_agent_id``, ``run_id`` = ``id``.
+    """
 
     agent_id: str = Field(
-        description="The Nimble Web Search Agent id (often wsa_…).",
+        description=(
+            "The Nimble Web Search Agent id (often wsa_…). "
+            "From start response field web_search_agent_id."
+        ),
     )
     run_id: str = Field(
-        description="The run id returned by nimble_agent_run_start.",
+        description=(
+            "The run id from nimble_web_search_agent_run_start. "
+            "From start response field id."
+        ),
     )
 
 
@@ -482,7 +618,8 @@ class NimbleAgentRunStatusTool(_NimbleClientMixin, BaseTool):
     """Get the status of a Nimble Web Search Agent run.
 
     Non-terminal statuses (queued/running) are normal resumable results —
-    call again later. Use ``nimble_agent_run_result`` when the run is complete.
+    call again later. Use ``nimble_web_search_agent_run_result`` when the run
+    is complete.
 
     Args:
         api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
@@ -490,34 +627,50 @@ class NimbleAgentRunStatusTool(_NimbleClientMixin, BaseTool):
         max_retries: Maximum retry attempts for 5xx errors (default: 2).
     """
 
-    name: str = "nimble_agent_run_status"
+    name: str = "nimble_web_search_agent_run_status"
     description: str = (
         "Get the status of a Nimble Web Search Agent run (Agent API V2). "
-        "Pass agent_id and run_id from nimble_agent_run_start. Queued/running "
-        "statuses are normal — check again later, then use "
-        "nimble_agent_run_result when complete."
+        "Pass agent_id (= start response web_search_agent_id) and run_id "
+        "(= start response id). Queued/running statuses are normal — check "
+        "again later, then use nimble_web_search_agent_run_result when "
+        "complete."
     )
     args_schema: type[BaseModel] = NimbleAgentRunStatusToolInput
     handle_tool_error: bool = True
 
     def _run(self, agent_id: str, run_id: str) -> dict[str, Any]:
-        """Get run status synchronously."""
-        if self._sync_client is None:
-            msg = "Sync client not initialized"
-            raise RuntimeError(msg)
+        """Get run status synchronously.
+
+        Args:
+            agent_id: Web Search Agent id (``web_search_agent_id``).
+            run_id: Run id (start response ``id``).
+
+        Returns:
+            Run status payload as a dictionary.
+        """
+        require_initialized_client(self.name, self._sync_client, sync=True)
 
         with handle_api_errors(operation="agent run status"):
-            response = self._sync_client.agents.runs.get(run_id, agent_id=agent_id)
+            response = self._sync_client.agents.runs.get(  # type: ignore[union-attr]
+                run_id,
+                agent_id=agent_id,
+            )
             return response.model_dump(mode="json")
 
     async def _arun(self, agent_id: str, run_id: str) -> dict[str, Any]:
-        """Get run status asynchronously."""
-        if self._async_client is None:
-            msg = "Async client not initialized"
-            raise RuntimeError(msg)
+        """Get run status asynchronously.
+
+        Args:
+            agent_id: Web Search Agent id (``web_search_agent_id``).
+            run_id: Run id (start response ``id``).
+
+        Returns:
+            Run status payload as a dictionary.
+        """
+        require_initialized_client(self.name, self._async_client, sync=False)
 
         with handle_api_errors(operation="agent run status"):
-            response = await self._async_client.agents.runs.get(
+            response = await self._async_client.agents.runs.get(  # type: ignore[union-attr]
                 run_id,
                 agent_id=agent_id,
             )
@@ -525,26 +678,37 @@ class NimbleAgentRunStatusTool(_NimbleClientMixin, BaseTool):
 
 
 # ───────────────────────────────────────────────────────────────
-# nimble_agent_run_result
+# nimble_web_search_agent_run_result
 # ───────────────────────────────────────────────────────────────
 
 
 class NimbleAgentRunResultToolInput(BaseModel):
-    """Input schema for NimbleAgentRunResultTool."""
+    """Input schema for NimbleAgentRunResultTool.
+
+    Uses ids from the start response: ``agent_id`` =
+    ``web_search_agent_id``, ``run_id`` = ``id``.
+    """
 
     agent_id: str = Field(
-        description="The Nimble Web Search Agent id (often wsa_…).",
+        description=(
+            "The Nimble Web Search Agent id (often wsa_…). "
+            "From start response field web_search_agent_id."
+        ),
     )
     run_id: str = Field(
-        description="The run id returned by nimble_agent_run_start.",
+        description=(
+            "The run id from nimble_web_search_agent_run_start. "
+            "From start response field id."
+        ),
     )
 
 
 class NimbleAgentRunResultTool(_NimbleClientMixin, BaseTool):
     """Get the result of a completed Nimble Web Search Agent run.
 
-    Prefer calling after ``nimble_agent_run_status`` indicates completion.
-    Surfaces structured results, citations/trust metadata when returned.
+    Prefer calling after ``nimble_web_search_agent_run_status`` indicates
+    completion. Surfaces structured results, citations/trust metadata when
+    returned. Failed runs raise ``ToolException``.
 
     Args:
         api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
@@ -552,44 +716,74 @@ class NimbleAgentRunResultTool(_NimbleClientMixin, BaseTool):
         max_retries: Maximum retry attempts for 5xx errors (default: 2).
     """
 
-    name: str = "nimble_agent_run_result"
+    name: str = "nimble_web_search_agent_run_result"
     description: str = (
         "Get the result of a completed Nimble Web Search Agent run "
-        "(Agent API V2). Pass agent_id and run_id from nimble_agent_run_start. "
-        "Use after status shows the run finished. May include text/JSON, "
-        "citations, and trust metadata when available."
+        "(Agent API V2). Pass agent_id (= start response "
+        "web_search_agent_id) and run_id (= start response id). Use after "
+        "status shows the run finished. May include text/JSON, citations, "
+        "and trust metadata when available."
     )
     args_schema: type[BaseModel] = NimbleAgentRunResultToolInput
     handle_tool_error: bool = True
 
-    def _dump_result(self, response: Any) -> dict[str, Any]:
-        """Normalize result payloads to a JSON-serializable dict."""
-        if hasattr(response, "model_dump"):
-            return response.model_dump(mode="json")
-        return {"result": response}
+    def _normalize_result(self, response: Any) -> dict[str, Any]:
+        """Normalize result payloads or raise on failed runs.
+
+        Args:
+            response: SDK run result union payload
+                (``TaskRunResultPublicV2`` or ``TaskRunFailedResultPublicV2``).
+
+        Returns:
+            Successful result as a JSON-serializable dictionary.
+
+        Raises:
+            ToolException: If the run failed (``error`` present, no ``output``).
+        """
+        payload = response.model_dump(mode="json")
+        if (
+            isinstance(payload, dict)
+            and payload.get("error") is not None
+            and "output" not in payload
+        ):
+            msg = f"Agent run failed: {payload['error']}"
+            raise ToolException(msg)
+        return payload
 
     def _run(self, agent_id: str, run_id: str) -> dict[str, Any]:
-        """Get run result synchronously."""
-        if self._sync_client is None:
-            msg = "Sync client not initialized"
-            raise RuntimeError(msg)
+        """Get run result synchronously.
+
+        Args:
+            agent_id: Web Search Agent id (``web_search_agent_id``).
+            run_id: Run id (start response ``id``).
+
+        Returns:
+            Successful run result payload as a dictionary.
+        """
+        require_initialized_client(self.name, self._sync_client, sync=True)
 
         with handle_api_errors(operation="agent run result"):
-            response = self._sync_client.agents.runs.result(
+            response = self._sync_client.agents.runs.result(  # type: ignore[union-attr]
                 run_id,
                 agent_id=agent_id,
             )
-            return self._dump_result(response)
+            return self._normalize_result(response)
 
     async def _arun(self, agent_id: str, run_id: str) -> dict[str, Any]:
-        """Get run result asynchronously."""
-        if self._async_client is None:
-            msg = "Async client not initialized"
-            raise RuntimeError(msg)
+        """Get run result asynchronously.
+
+        Args:
+            agent_id: Web Search Agent id (``web_search_agent_id``).
+            run_id: Run id (start response ``id``).
+
+        Returns:
+            Successful run result payload as a dictionary.
+        """
+        require_initialized_client(self.name, self._async_client, sync=False)
 
         with handle_api_errors(operation="agent run result"):
-            response = await self._async_client.agents.runs.result(
+            response = await self._async_client.agents.runs.result(  # type: ignore[union-attr]
                 run_id,
                 agent_id=agent_id,
             )
-            return self._dump_result(response)
+            return self._normalize_result(response)

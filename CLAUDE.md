@@ -95,7 +95,7 @@ uv run ruff format .
 - For async SDK operations (crawl): use poll-inside-the-tool with `time.monotonic()` deadline
 - NimbleToolkit groups tools with `include_*` flags; `get_tools()` returns `list[BaseTool]`
 - Extract Templates: 3 tools (list→get→run) via `include_extract_templates`
-- Agent API V2: resumable start/status/result (no poll-inside-tool) via `include_agents`
+- Agent API V2: resumable start/status/result (no poll-inside-tool) via `include_web_search_agents`
 - Deprecated `NimbleAgent*` / `include_agent` wrap Extract Templates only — never Agent API V2
 - Attribution: `client_source="langchain-nimble"` → `X-Client-Source: langchain-nimble`
 

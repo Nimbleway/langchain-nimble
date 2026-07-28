@@ -7,7 +7,11 @@ from typing import Any
 from langchain_core.tools import BaseTool, ToolException
 from pydantic import BaseModel, Field
 
-from langchain_nimble._utilities import _NimbleClientMixin, handle_api_errors
+from langchain_nimble._utilities import (
+    _NimbleClientMixin,
+    handle_api_errors,
+    require_initialized_client,
+)
 
 # ───────────────────────────────────────────────────────────────
 # nimble_extract_template_list
@@ -15,7 +19,10 @@ from langchain_nimble._utilities import _NimbleClientMixin, handle_api_errors
 
 
 class NimbleExtractTemplateListToolInput(BaseModel):
-    """Input schema for NimbleExtractTemplateListTool."""
+    """Input schema for NimbleExtractTemplateListTool.
+
+    Accepts optional pagination for listing Extract Templates.
+    """
 
     limit: int | None = Field(
         default=None,
@@ -44,8 +51,8 @@ class NimbleExtractTemplateListTool(_NimbleClientMixin, BaseTool):
         "List available Nimble Extract Templates for structured site scraping. "
         "Returns template names and metadata. Use this first to discover which "
         "templates exist, then use nimble_extract_template_get to see required "
-        "parameters. This is NOT Agent API V2 research — use nimble_agents_list "
-        "for Web Search Agents."
+        "parameters. This is NOT Agent API V2 research — use "
+        "nimble_web_search_agents_list for Web Search Agents."
     )
     args_schema: type[BaseModel] = NimbleExtractTemplateListToolInput
     handle_tool_error: bool = True
@@ -56,7 +63,15 @@ class NimbleExtractTemplateListTool(_NimbleClientMixin, BaseTool):
         limit: int | None,
         offset: int | None,
     ) -> dict[str, Any]:
-        """Build keyword arguments for extract.templates.list()."""
+        """Build keyword arguments for extract.templates.list().
+
+        Args:
+            limit: Maximum number of templates to return.
+            offset: Pagination offset.
+
+        Returns:
+            Keyword arguments accepted by ``extract.templates.list``.
+        """
         kwargs: dict[str, Any] = {}
         if limit is not None:
             kwargs["limit"] = limit
@@ -70,15 +85,21 @@ class NimbleExtractTemplateListTool(_NimbleClientMixin, BaseTool):
         limit: int | None = None,
         offset: int | None = None,
     ) -> list[dict[str, Any]]:
-        """List extract templates synchronously."""
-        if self._sync_client is None:
-            msg = "Sync client not initialized"
-            raise RuntimeError(msg)
+        """List extract templates synchronously.
+
+        Args:
+            limit: Maximum number of templates to return.
+            offset: Pagination offset.
+
+        Returns:
+            List of template records as dictionaries.
+        """
+        require_initialized_client(self.name, self._sync_client, sync=True)
 
         list_kwargs = self._build_list_kwargs(limit=limit, offset=offset)
 
         with handle_api_errors(operation="extract template list"):
-            response = self._sync_client.extract.templates.list(**list_kwargs)
+            response = self._sync_client.extract.templates.list(**list_kwargs)  # type: ignore[union-attr]
             return [item.model_dump(mode="json") for item in response.items]
 
     async def _arun(
@@ -87,15 +108,21 @@ class NimbleExtractTemplateListTool(_NimbleClientMixin, BaseTool):
         limit: int | None = None,
         offset: int | None = None,
     ) -> list[dict[str, Any]]:
-        """List extract templates asynchronously."""
-        if self._async_client is None:
-            msg = "Async client not initialized"
-            raise RuntimeError(msg)
+        """List extract templates asynchronously.
+
+        Args:
+            limit: Maximum number of templates to return.
+            offset: Pagination offset.
+
+        Returns:
+            List of template records as dictionaries.
+        """
+        require_initialized_client(self.name, self._async_client, sync=False)
 
         list_kwargs = self._build_list_kwargs(limit=limit, offset=offset)
 
         with handle_api_errors(operation="extract template list"):
-            response = await self._async_client.extract.templates.list(**list_kwargs)
+            response = await self._async_client.extract.templates.list(**list_kwargs)  # type: ignore[union-attr]
             return [item.model_dump(mode="json") for item in response.items]
 
 
@@ -105,7 +132,10 @@ class NimbleExtractTemplateListTool(_NimbleClientMixin, BaseTool):
 
 
 class NimbleExtractTemplateGetToolInput(BaseModel):
-    """Input schema for NimbleExtractTemplateGetTool."""
+    """Input schema for NimbleExtractTemplateGetTool.
+
+    Requires a template name discovered via list.
+    """
 
     template_name: str = Field(
         description="""The extract template name to get details for.
@@ -140,23 +170,33 @@ class NimbleExtractTemplateGetTool(_NimbleClientMixin, BaseTool):
     handle_tool_error: bool = True
 
     def _run(self, template_name: str) -> dict[str, Any]:
-        """Get extract template details synchronously."""
-        if self._sync_client is None:
-            msg = "Sync client not initialized"
-            raise RuntimeError(msg)
+        """Get extract template details synchronously.
+
+        Args:
+            template_name: Extract template name to fetch.
+
+        Returns:
+            Template metadata as a dictionary.
+        """
+        require_initialized_client(self.name, self._sync_client, sync=True)
 
         with handle_api_errors(operation="extract template get"):
-            response = self._sync_client.extract.templates.get(template_name)
+            response = self._sync_client.extract.templates.get(template_name)  # type: ignore[union-attr]
             return response.model_dump(mode="json")
 
     async def _arun(self, template_name: str) -> dict[str, Any]:
-        """Get extract template details asynchronously."""
-        if self._async_client is None:
-            msg = "Async client not initialized"
-            raise RuntimeError(msg)
+        """Get extract template details asynchronously.
+
+        Args:
+            template_name: Extract template name to fetch.
+
+        Returns:
+            Template metadata as a dictionary.
+        """
+        require_initialized_client(self.name, self._async_client, sync=False)
 
         with handle_api_errors(operation="extract template get"):
-            response = await self._async_client.extract.templates.get(template_name)
+            response = await self._async_client.extract.templates.get(template_name)  # type: ignore[union-attr]
             return response.model_dump(mode="json")
 
 
@@ -166,7 +206,10 @@ class NimbleExtractTemplateGetTool(_NimbleClientMixin, BaseTool):
 
 
 class NimbleExtractTemplateRunToolInput(BaseModel):
-    """Input schema for NimbleExtractTemplateRunTool."""
+    """Input schema for NimbleExtractTemplateRunTool.
+
+    Runs a named Extract Template with template-specific params.
+    """
 
     template: str = Field(
         description="""The extract template name to run.
@@ -199,7 +242,8 @@ class NimbleExtractTemplateRunTool(_NimbleClientMixin, BaseTool):
 
     Extract Templates handle structured site scraping workflows such as
     product page parsing and search result extraction. This is distinct from
-    Agent API V2 research agents (use nimble_agent_run_start / status / result).
+    Agent API V2 research agents (use ``nimble_web_search_agent_run_start`` /
+    status / result).
 
     Recommended workflow:
     1. nimble_extract_template_list → discover available templates
@@ -229,7 +273,16 @@ class NimbleExtractTemplateRunTool(_NimbleClientMixin, BaseTool):
         *,
         localization: bool | None,
     ) -> dict[str, Any]:
-        """Build keyword arguments for extract.templates.run()."""
+        """Build keyword arguments for extract.templates.run().
+
+        Args:
+            template: Extract template name to run.
+            params: Template-specific parameters.
+            localization: Optional localization flag.
+
+        Returns:
+            Keyword arguments accepted by ``extract.templates.run``.
+        """
         kwargs: dict[str, Any] = {
             "template": template,
             "params": params,
@@ -239,7 +292,17 @@ class NimbleExtractTemplateRunTool(_NimbleClientMixin, BaseTool):
         return kwargs
 
     def _validate_response(self, response: Any) -> dict[str, Any]:
-        """Validate template response status and return dumped data."""
+        """Validate template response status and return dumped data.
+
+        Args:
+            response: SDK extract template run response.
+
+        Returns:
+            Successful response as a JSON-serializable dictionary.
+
+        Raises:
+            ToolException: If response status is not ``success``.
+        """
         if response.status != "success":
             warnings_msg = ""
             if response.warnings:
@@ -258,10 +321,17 @@ class NimbleExtractTemplateRunTool(_NimbleClientMixin, BaseTool):
         *,
         localization: bool | None = None,
     ) -> dict[str, Any]:
-        """Execute extract template synchronously."""
-        if self._sync_client is None:
-            msg = "Sync client not initialized"
-            raise RuntimeError(msg)
+        """Execute extract template synchronously.
+
+        Args:
+            template: Extract template name to run.
+            params: Template-specific parameters.
+            localization: Optional localization flag.
+
+        Returns:
+            Successful template run payload as a dictionary.
+        """
+        require_initialized_client(self.name, self._sync_client, sync=True)
 
         run_kwargs = self._build_run_kwargs(
             template=template,
@@ -270,7 +340,7 @@ class NimbleExtractTemplateRunTool(_NimbleClientMixin, BaseTool):
         )
 
         with handle_api_errors(operation="extract template run"):
-            response = self._sync_client.extract.templates.run(**run_kwargs)
+            response = self._sync_client.extract.templates.run(**run_kwargs)  # type: ignore[union-attr]
             return self._validate_response(response)
 
     async def _arun(
@@ -280,10 +350,17 @@ class NimbleExtractTemplateRunTool(_NimbleClientMixin, BaseTool):
         *,
         localization: bool | None = None,
     ) -> dict[str, Any]:
-        """Execute extract template asynchronously."""
-        if self._async_client is None:
-            msg = "Async client not initialized"
-            raise RuntimeError(msg)
+        """Execute extract template asynchronously.
+
+        Args:
+            template: Extract template name to run.
+            params: Template-specific parameters.
+            localization: Optional localization flag.
+
+        Returns:
+            Successful template run payload as a dictionary.
+        """
+        require_initialized_client(self.name, self._async_client, sync=False)
 
         run_kwargs = self._build_run_kwargs(
             template=template,
@@ -292,5 +369,5 @@ class NimbleExtractTemplateRunTool(_NimbleClientMixin, BaseTool):
         )
 
         with handle_api_errors(operation="extract template run"):
-            response = await self._async_client.extract.templates.run(**run_kwargs)
+            response = await self._async_client.extract.templates.run(**run_kwargs)  # type: ignore[union-attr]
             return self._validate_response(response)

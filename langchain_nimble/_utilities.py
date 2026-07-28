@@ -67,6 +67,29 @@ class _NimbleClientMixin(BaseModel):
         return self
 
 
+def require_initialized_client(
+    tool_name: str,
+    client: object | None,
+    *,
+    sync: bool,
+) -> None:
+    """Raise ToolException when the SDK client is missing.
+
+    Args:
+        tool_name: Model-facing tool name for error context.
+        client: Sync or async Nimble client instance.
+        sync: Whether the missing client is the sync client.
+
+    Raises:
+        ToolException: If ``client`` is ``None``.
+    """
+    if client is not None:
+        return
+    kind = "sync" if sync else "async"
+    msg = f"{tool_name}: {kind} client not initialized"
+    raise ToolException(msg)
+
+
 @contextmanager
 def handle_api_errors(operation: str = "API request") -> Iterator[None]:
     """Convert Nimble SDK exceptions to ToolException for graceful agent handling."""

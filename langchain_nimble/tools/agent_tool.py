@@ -15,14 +15,18 @@ from typing import Any
 from langchain_core.tools import BaseTool, ToolException
 from pydantic import BaseModel, Field
 
-from langchain_nimble._utilities import _NimbleClientMixin, handle_api_errors
+from langchain_nimble._utilities import (
+    _NimbleClientMixin,
+    handle_api_errors,
+    require_initialized_client,
+)
 
 _DEPRECATION_MESSAGE = (
     "NimbleAgent* tools are deprecated and now wrap Extract Templates. "
     "Use nimble_extract_template_list / nimble_extract_template_get / "
     "nimble_extract_template_run instead. For Agent API V2 research agents, "
-    "use nimble_agents_list, nimble_agent_run_start, nimble_agent_run_status, "
-    "and nimble_agent_run_result."
+    "use nimble_web_search_agents_list, nimble_web_search_agent_run_start, "
+    "nimble_web_search_agent_run_status, and nimble_web_search_agent_run_result."
 )
 
 
@@ -37,7 +41,10 @@ def _warn_deprecated() -> None:
 
 
 class NimbleAgentListToolInput(BaseModel):
-    """Input schema for NimbleAgentListTool."""
+    """Input schema for NimbleAgentListTool.
+
+    Deprecated alias of Extract Templates list pagination fields.
+    """
 
     limit: int | None = Field(
         default=None,
@@ -64,7 +71,7 @@ class NimbleAgentListTool(_NimbleClientMixin, BaseTool):
     description: str = (
         "DEPRECATED: List Nimble Extract Templates (legacy agent tool name). "
         "Prefer nimble_extract_template_list. For Agent API V2 research, use "
-        "nimble_agents_list instead."
+        "nimble_web_search_agents_list instead."
     )
     args_schema: type[BaseModel] = NimbleAgentListToolInput
     handle_tool_error: bool = True
@@ -75,7 +82,15 @@ class NimbleAgentListTool(_NimbleClientMixin, BaseTool):
         limit: int | None,
         offset: int | None,
     ) -> dict[str, Any]:
-        """Build keyword arguments for extract.templates.list()."""
+        """Build keyword arguments for extract.templates.list().
+
+        Args:
+            limit: Maximum number of templates to return.
+            offset: Pagination offset.
+
+        Returns:
+            Keyword arguments accepted by ``extract.templates.list``.
+        """
         kwargs: dict[str, Any] = {}
         if limit is not None:
             kwargs["limit"] = limit
@@ -89,16 +104,22 @@ class NimbleAgentListTool(_NimbleClientMixin, BaseTool):
         limit: int | None = None,
         offset: int | None = None,
     ) -> list[dict[str, Any]]:
-        """List extract templates synchronously (deprecated alias)."""
+        """List extract templates synchronously (deprecated alias).
+
+        Args:
+            limit: Maximum number of templates to return.
+            offset: Pagination offset.
+
+        Returns:
+            List of template records as dictionaries.
+        """
         _warn_deprecated()
-        if self._sync_client is None:
-            msg = "Sync client not initialized"
-            raise RuntimeError(msg)
+        require_initialized_client(self.name, self._sync_client, sync=True)
 
         list_kwargs = self._build_list_kwargs(limit=limit, offset=offset)
 
         with handle_api_errors(operation="extract template list"):
-            response = self._sync_client.extract.templates.list(**list_kwargs)
+            response = self._sync_client.extract.templates.list(**list_kwargs)  # type: ignore[union-attr]
             return [item.model_dump(mode="json") for item in response.items]
 
     async def _arun(
@@ -107,16 +128,22 @@ class NimbleAgentListTool(_NimbleClientMixin, BaseTool):
         limit: int | None = None,
         offset: int | None = None,
     ) -> list[dict[str, Any]]:
-        """List extract templates asynchronously (deprecated alias)."""
+        """List extract templates asynchronously (deprecated alias).
+
+        Args:
+            limit: Maximum number of templates to return.
+            offset: Pagination offset.
+
+        Returns:
+            List of template records as dictionaries.
+        """
         _warn_deprecated()
-        if self._async_client is None:
-            msg = "Async client not initialized"
-            raise RuntimeError(msg)
+        require_initialized_client(self.name, self._async_client, sync=False)
 
         list_kwargs = self._build_list_kwargs(limit=limit, offset=offset)
 
         with handle_api_errors(operation="extract template list"):
-            response = await self._async_client.extract.templates.list(**list_kwargs)
+            response = await self._async_client.extract.templates.list(**list_kwargs)  # type: ignore[union-attr]
             return [item.model_dump(mode="json") for item in response.items]
 
 
@@ -126,7 +153,10 @@ class NimbleAgentListTool(_NimbleClientMixin, BaseTool):
 
 
 class NimbleAgentGetToolInput(BaseModel):
-    """Input schema for NimbleAgentGetTool."""
+    """Input schema for NimbleAgentGetTool.
+
+    Deprecated alias of Extract Templates get input.
+    """
 
     template_name: str = Field(
         description="""The extract template name to get details for.
@@ -157,25 +187,35 @@ class NimbleAgentGetTool(_NimbleClientMixin, BaseTool):
     handle_tool_error: bool = True
 
     def _run(self, template_name: str) -> dict[str, Any]:
-        """Get extract template details synchronously (deprecated alias)."""
+        """Get extract template details synchronously (deprecated alias).
+
+        Args:
+            template_name: Extract template name to fetch.
+
+        Returns:
+            Template metadata as a dictionary.
+        """
         _warn_deprecated()
-        if self._sync_client is None:
-            msg = "Sync client not initialized"
-            raise RuntimeError(msg)
+        require_initialized_client(self.name, self._sync_client, sync=True)
 
         with handle_api_errors(operation="extract template get"):
-            response = self._sync_client.extract.templates.get(template_name)
+            response = self._sync_client.extract.templates.get(template_name)  # type: ignore[union-attr]
             return response.model_dump(mode="json")
 
     async def _arun(self, template_name: str) -> dict[str, Any]:
-        """Get extract template details asynchronously (deprecated alias)."""
+        """Get extract template details asynchronously (deprecated alias).
+
+        Args:
+            template_name: Extract template name to fetch.
+
+        Returns:
+            Template metadata as a dictionary.
+        """
         _warn_deprecated()
-        if self._async_client is None:
-            msg = "Async client not initialized"
-            raise RuntimeError(msg)
+        require_initialized_client(self.name, self._async_client, sync=False)
 
         with handle_api_errors(operation="extract template get"):
-            response = await self._async_client.extract.templates.get(template_name)
+            response = await self._async_client.extract.templates.get(template_name)  # type: ignore[union-attr]
             return response.model_dump(mode="json")
 
 
@@ -185,7 +225,10 @@ class NimbleAgentGetTool(_NimbleClientMixin, BaseTool):
 
 
 class NimbleAgentRunToolInput(BaseModel):
-    """Input schema for NimbleAgentRunTool."""
+    """Input schema for NimbleAgentRunTool.
+
+    Deprecated alias of Extract Templates run input (``agent`` = template).
+    """
 
     agent: str = Field(
         description="""The extract template name to run (legacy param name).
@@ -224,7 +267,7 @@ class NimbleAgentRunTool(_NimbleClientMixin, BaseTool):
     description: str = (
         "DEPRECATED: Run a Nimble Extract Template (legacy agent tool name). "
         "Prefer nimble_extract_template_run. For Agent API V2 research, use "
-        "nimble_agent_run_start / status / result."
+        "nimble_web_search_agent_run_start / status / result."
     )
     args_schema: type[BaseModel] = NimbleAgentRunToolInput
     handle_tool_error: bool = True
@@ -236,7 +279,16 @@ class NimbleAgentRunTool(_NimbleClientMixin, BaseTool):
         *,
         localization: bool | None,
     ) -> dict[str, Any]:
-        """Build keyword arguments for extract.templates.run()."""
+        """Build keyword arguments for extract.templates.run().
+
+        Args:
+            agent: Extract template name (legacy param name).
+            params: Template-specific parameters.
+            localization: Optional localization flag.
+
+        Returns:
+            Keyword arguments accepted by ``extract.templates.run``.
+        """
         kwargs: dict[str, Any] = {
             "template": agent,
             "params": params,
@@ -246,7 +298,17 @@ class NimbleAgentRunTool(_NimbleClientMixin, BaseTool):
         return kwargs
 
     def _validate_response(self, response: Any) -> dict[str, Any]:
-        """Validate template response status and return dumped data."""
+        """Validate template response status and return dumped data.
+
+        Args:
+            response: SDK extract template run response.
+
+        Returns:
+            Successful response as a JSON-serializable dictionary.
+
+        Raises:
+            ToolException: If response status is not ``success``.
+        """
         if response.status != "success":
             warnings_msg = ""
             if response.warnings:
@@ -265,11 +327,18 @@ class NimbleAgentRunTool(_NimbleClientMixin, BaseTool):
         *,
         localization: bool | None = None,
     ) -> dict[str, Any]:
-        """Execute extract template synchronously (deprecated alias)."""
+        """Execute extract template synchronously (deprecated alias).
+
+        Args:
+            agent: Extract template name (legacy param name).
+            params: Template-specific parameters.
+            localization: Optional localization flag.
+
+        Returns:
+            Successful template run payload as a dictionary.
+        """
         _warn_deprecated()
-        if self._sync_client is None:
-            msg = "Sync client not initialized"
-            raise RuntimeError(msg)
+        require_initialized_client(self.name, self._sync_client, sync=True)
 
         run_kwargs = self._build_run_kwargs(
             agent=agent,
@@ -278,7 +347,7 @@ class NimbleAgentRunTool(_NimbleClientMixin, BaseTool):
         )
 
         with handle_api_errors(operation="extract template run"):
-            response = self._sync_client.extract.templates.run(**run_kwargs)
+            response = self._sync_client.extract.templates.run(**run_kwargs)  # type: ignore[union-attr]
             return self._validate_response(response)
 
     async def _arun(
@@ -288,11 +357,18 @@ class NimbleAgentRunTool(_NimbleClientMixin, BaseTool):
         *,
         localization: bool | None = None,
     ) -> dict[str, Any]:
-        """Execute extract template asynchronously (deprecated alias)."""
+        """Execute extract template asynchronously (deprecated alias).
+
+        Args:
+            agent: Extract template name (legacy param name).
+            params: Template-specific parameters.
+            localization: Optional localization flag.
+
+        Returns:
+            Successful template run payload as a dictionary.
+        """
         _warn_deprecated()
-        if self._async_client is None:
-            msg = "Async client not initialized"
-            raise RuntimeError(msg)
+        require_initialized_client(self.name, self._async_client, sync=False)
 
         run_kwargs = self._build_run_kwargs(
             agent=agent,
@@ -301,5 +377,5 @@ class NimbleAgentRunTool(_NimbleClientMixin, BaseTool):
         )
 
         with handle_api_errors(operation="extract template run"):
-            response = await self._async_client.extract.templates.run(**run_kwargs)
+            response = await self._async_client.extract.templates.run(**run_kwargs)  # type: ignore[union-attr]
             return self._validate_response(response)

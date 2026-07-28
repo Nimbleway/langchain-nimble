@@ -2,6 +2,9 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+from langchain_core.tools import ToolException
+
 from langchain_nimble import (
     NimbleAgentCreateTool,
     NimbleAgentRunResultTool,
@@ -233,12 +236,52 @@ async def test_agent_run_result_arun() -> None:
     mock_result.assert_awaited_once()
 
 
+def test_agent_run_result_failed_raises_tool_exception() -> None:
+    """Test failed run_result payloads raise ToolException."""
+    tool = NimbleAgentRunResultTool(api_key="test_key")
+    mock_response = MagicMock()
+    mock_response.model_dump.return_value = {
+        "error": {"message": "budget exceeded", "code": "failed"},
+        "run": {"id": "task_run_abc", "status": "failed"},
+    }
+
+    with (
+        patch.object(
+            tool._sync_client.agents.runs,
+            "result",
+            return_value=mock_response,
+        ),
+        pytest.raises(ToolException, match="Agent run failed"),
+    ):
+        tool._run(agent_id="wsa_123", run_id="task_run_abc")
+
+
+def test_missing_client_raises_contextual_tool_exception() -> None:
+    """Test missing sync client raises ToolException with tool name."""
+    tool = NimbleAgentRunStartTool(api_key="test_key")
+    tool._sync_client = None
+
+    with pytest.raises(
+        ToolException,
+        match="nimble_web_search_agent_run_start: sync client not initialized",
+    ):
+        tool._run(agent_id="wsa_123", input="hello")
+
+
 def test_tool_names() -> None:
     """Test Agent API V2 tools have expected names."""
-    assert NimbleAgentsListTool(api_key="k").name == "nimble_agents_list"
+    assert NimbleAgentsListTool(api_key="k").name == "nimble_web_search_agents_list"
     templates = NimbleAgentTemplatesListTool(api_key="k")
-    assert templates.name == "nimble_agent_templates_list"
-    assert NimbleAgentCreateTool(api_key="k").name == "nimble_agent_create"
-    assert NimbleAgentRunStartTool(api_key="k").name == "nimble_agent_run_start"
-    assert NimbleAgentRunStatusTool(api_key="k").name == "nimble_agent_run_status"
-    assert NimbleAgentRunResultTool(api_key="k").name == "nimble_agent_run_result"
+    assert templates.name == "nimble_web_search_agent_templates_list"
+    assert NimbleAgentCreateTool(api_key="k").name == "nimble_web_search_agent_create"
+    assert (
+        NimbleAgentRunStartTool(api_key="k").name == "nimble_web_search_agent_run_start"
+    )
+    assert (
+        NimbleAgentRunStatusTool(api_key="k").name
+        == "nimble_web_search_agent_run_status"
+    )
+    assert (
+        NimbleAgentRunResultTool(api_key="k").name
+        == "nimble_web_search_agent_run_result"
+    )

@@ -50,7 +50,7 @@ async def main() -> None:
     toolkit = NimbleToolkit(
         include_search=False,
         include_extract=False,
-        include_agents=True,
+        include_web_search_agents=True,
     )
     tools = toolkit.get_tools()
 
@@ -60,11 +60,16 @@ async def main() -> None:
         system_prompt=(
             "You can run Nimble Web Search Agents (Agent API V2).\n\n"
             "Workflow:\n"
-            "1. nimble_agents_list and/or nimble_agent_templates_list to discover\n"
-            "2. nimble_agent_create if you need a new agent from a template\n"
-            "3. nimble_agent_run_start — returns immediately with a run id\n"
-            "4. nimble_agent_run_status — check queued/running/completed\n"
-            "5. nimble_agent_run_result — fetch the finished result\n\n"
+            "1. nimble_web_search_agents_list and/or "
+            "nimble_web_search_agent_templates_list to discover\n"
+            "2. nimble_web_search_agent_create if you need a new agent "
+            "from a template\n"
+            "3. nimble_web_search_agent_run_start — returns immediately; "
+            "use id as run_id and web_search_agent_id as agent_id\n"
+            "4. nimble_web_search_agent_run_status — check "
+            "queued/running/completed\n"
+            "5. nimble_web_search_agent_run_result — fetch the finished "
+            "result\n\n"
             "Never pretend a run is finished before status says so. "
             "Preserve agent_id and run_id across steps."
         ),

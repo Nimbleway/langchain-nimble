@@ -62,9 +62,12 @@ class NimbleToolkit(BaseToolkit):
         default=False,
         description="Include Extract Templates tools (list, get, run).",
     )
-    include_agents: bool = Field(
+    include_web_search_agents: bool = Field(
         default=False,
-        description="Include Agent API V2 tools (list, create, start/status/result).",
+        description=(
+            "Include Agent API V2 Web Search Agent tools "
+            "(list, create, start/status/result)."
+        ),
     )
     include_agent: bool = Field(
         default=False,
@@ -126,6 +129,16 @@ class NimbleToolkit(BaseToolkit):
 
             tools.append(NimbleMapTool(**common_kwargs))
 
+        if self.include_agent:
+            warnings.warn(
+                "NimbleToolkit(include_agent=True) is deprecated. "
+                "Use include_extract_templates=True for Extract Templates, "
+                "or include_web_search_agents=True for Agent API V2 research "
+                "tools.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         if self.include_extract_templates:
             from langchain_nimble.tools.extract_template_tool import (
                 NimbleExtractTemplateGetTool,
@@ -140,14 +153,7 @@ class NimbleToolkit(BaseToolkit):
                     NimbleExtractTemplateRunTool(**common_kwargs),
                 ]
             )
-        elif self.include_agent:
-            warnings.warn(
-                "NimbleToolkit(include_agent=True) is deprecated. "
-                "Use include_extract_templates=True for Extract Templates, "
-                "or include_agents=True for Agent API V2 research tools.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
+        elif self.include_agent and not self.include_web_search_agents:
             from langchain_nimble.tools.agent_tool import (
                 NimbleAgentGetTool,
                 NimbleAgentListTool,
@@ -161,8 +167,17 @@ class NimbleToolkit(BaseToolkit):
                     NimbleAgentRunTool(**common_kwargs),
                 ]
             )
+        elif self.include_agent and self.include_web_search_agents:
+            warnings.warn(
+                "include_agent=True ignored because "
+                "include_web_search_agents=True is set; deprecated "
+                "nimble_agent_* aliases are not added to avoid overlapping "
+                "APIs.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
-        if self.include_agents:
+        if self.include_web_search_agents:
             from langchain_nimble.tools.agents_v2_tool import (
                 NimbleAgentCreateTool,
                 NimbleAgentRunResultTool,

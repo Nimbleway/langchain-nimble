@@ -1,6 +1,10 @@
 """Integration smokes for Extract Templates and Agent API V2.
 
 Requires NIMBLE_API_KEY environment variable.
+
+Billable start/run tests are marked ``expensive`` — run with::
+
+    pytest tests/integration_tests/ -m expensive
 """
 
 from __future__ import annotations
@@ -16,6 +20,17 @@ from langchain_nimble import (
     NimbleExtractTemplateListTool,
     NimbleExtractTemplateRunTool,
 )
+
+_AGENT_RUN_STATUSES = {
+    "queued",
+    "running",
+    "completed",
+    "failed",
+    "cancelled",
+    "canceled",
+    "success",
+    "error",
+}
 
 
 @pytest.fixture
@@ -33,8 +48,12 @@ def test_extract_template_list_live(api_key: str) -> None:
     result = tool.invoke({"limit": 5})
 
     assert isinstance(result, list)
+    if result:
+        assert isinstance(result[0], dict)
+        assert "name" in result[0] or "id" in result[0]
 
 
+@pytest.mark.expensive
 def test_extract_template_run_live(api_key: str) -> None:
     """Live smoke: run a known extract template when available."""
     list_tool = NimbleExtractTemplateListTool(api_key=api_key)
@@ -55,7 +74,9 @@ def test_extract_template_run_live(api_key: str) -> None:
     )
 
     assert isinstance(result, dict)
-    assert result.get("status") == "success" or "task_id" in result
+    assert result.get("status") == "success"
+    assert result.get("task_id")
+    assert result.get("data") is not None
 
 
 def test_agents_list_live(api_key: str) -> None:
@@ -64,8 +85,12 @@ def test_agents_list_live(api_key: str) -> None:
     result = tool.invoke({"limit": 5})
 
     assert isinstance(result, list)
+    if result:
+        assert isinstance(result[0], dict)
+        assert "id" in result[0]
 
 
+@pytest.mark.expensive
 def test_agent_run_start_and_status_live(api_key: str) -> None:
     """Live smoke: start a run and fetch status (may be non-terminal)."""
     list_tool = NimbleAgentsListTool(api_key=api_key)
@@ -89,9 +114,12 @@ def test_agent_run_start_and_status_live(api_key: str) -> None:
     assert isinstance(started, dict)
     run_id = started.get("id")
     assert run_id, f"Expected run id in start response: {started}"
+    wsa_id = started.get("web_search_agent_id")
+    if wsa_id is not None:
+        assert wsa_id == agent_id
 
     status_tool = NimbleAgentRunStatusTool(api_key=api_key)
     status = status_tool.invoke({"agent_id": agent_id, "run_id": run_id})
 
     assert isinstance(status, dict)
-    assert "status" in status or status.get("id") == run_id
+    assert status.get("status") in _AGENT_RUN_STATUSES
