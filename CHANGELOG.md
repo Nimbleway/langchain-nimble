@@ -19,6 +19,7 @@
   - `nimble_web_search_agent_templates_list`
   - `nimble_web_search_agent_create`
   - `nimble_web_search_agent_run_start` / `run_status` / `run_result`
+- `nimble_web_search_agent_run_start` supports Mode 1 (`agent_name`), Mode 2 (`agent_id`), Mode 3 (anonymous), plus `skill` / `use_case` / `sources` / `output_schema` / `input_data` / `effort`
 - Toolkit flags: `include_extract_templates`, `include_web_search_agents`
 - Attribution via SDK `client_source="langchain-nimble"`
 
@@ -32,3 +33,7 @@
 - Legacy `nimble_agent_*` names are **not** repointed to Agent API V2 research agents
 - Agent API V2 tools are resumable; they do not poll inside one call
 - Failed Agent API V2 results raise `ToolException` (aligned with Extract Template non-success handling)
+- Default bootstrap for LangChain: **Mode 1** (`agent_name`) because tool sessions are typically stateless; Mode 2 when the host persists `wsa_…`
+- `agent_name` / `use_case` / `skill` on run start use SDK `extra_body` until `nimble_python` types them on `agents.run` / `agents.runs.create`
+- SSE `/events` tool is an intentional gap (pass `enable_events` if you consume events outside this package)
+- Ticket DoD slug `langchain` vs playbook `langchain-nimble`: package uses **`langchain-nimble`**

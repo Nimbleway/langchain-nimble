@@ -116,8 +116,8 @@ async def test_agent_create_arun() -> None:
     mock_create.assert_awaited_once()
 
 
-def test_agent_run_start() -> None:
-    """Test synchronous agent run start returns immediately."""
+def test_agent_run_start_mode2() -> None:
+    """Test Mode 2 start uses agents.runs.create(agent_id, ...)."""
     tool = NimbleAgentRunStartTool(api_key="test_key")
     mock_response = MagicMock()
     mock_response.model_dump.return_value = {
@@ -135,18 +135,82 @@ def test_agent_run_start() -> None:
             agent_id="wsa_123",
             input="Research AI agents",
             effort="medium",
+            skill="Focus on primary sources",
+            use_case="research",
         )
 
     assert result["id"] == "task_run_abc"
     assert result["status"] == "queued"
+    assert mock_create.call_args.args == ("wsa_123",)
     call_kwargs = mock_create.call_args.kwargs
-    assert call_kwargs["agent_id"] == "wsa_123"
     assert call_kwargs["input"] == "Research AI agents"
     assert call_kwargs["effort"] == "medium"
+    assert call_kwargs["extra_body"] == {
+        "use_case": "research",
+        "skill": "Focus on primary sources",
+    }
+
+
+def test_agent_run_start_mode1_agent_name() -> None:
+    """Test Mode 1 start uses agents.run with agent_name in extra_body."""
+    tool = NimbleAgentRunStartTool(api_key="test_key")
+    mock_response = MagicMock()
+    mock_response.model_dump.return_value = {
+        "id": "task_run_abc",
+        "status": "queued",
+        "web_search_agent_id": "wsa_new",
+    }
+
+    with patch.object(
+        tool._sync_client.agents,
+        "run",
+        return_value=mock_response,
+    ) as mock_run:
+        result = tool._run(
+            agent_name="integrations_research_bot",
+            input="Summarize Agent API v2",
+            use_case="research",
+            effort="medium",
+            skill="Integrator-focused docs",
+            sources={"prioritize": "official docs", "avoid": "spam blogs"},
+        )
+
+    assert result["web_search_agent_id"] == "wsa_new"
+    call_kwargs = mock_run.call_args.kwargs
+    assert call_kwargs["input"] == "Summarize Agent API v2"
+    assert call_kwargs["effort"] == "medium"
+    assert call_kwargs["sources"]["prioritize"] == "official docs"
+    assert call_kwargs["extra_body"] == {
+        "agent_name": "integrations_research_bot",
+        "use_case": "research",
+        "skill": "Integrator-focused docs",
+    }
+
+
+def test_agent_run_start_mode3_anonymous() -> None:
+    """Test Mode 3 start omits agent_id/agent_name."""
+    tool = NimbleAgentRunStartTool(api_key="test_key")
+    mock_response = MagicMock()
+    mock_response.model_dump.return_value = {
+        "id": "task_run_abc",
+        "web_search_agent_id": "wsa_anon",
+    }
+
+    with patch.object(
+        tool._sync_client.agents,
+        "run",
+        return_value=mock_response,
+    ) as mock_run:
+        result = tool._run(input="Quick one-shot research")
+
+    assert result["web_search_agent_id"] == "wsa_anon"
+    call_kwargs = mock_run.call_args.kwargs
+    assert call_kwargs["input"] == "Quick one-shot research"
+    assert "extra_body" not in call_kwargs
 
 
 async def test_agent_run_start_arun() -> None:
-    """Test asynchronous agent run start."""
+    """Test asynchronous Mode 2 agent run start."""
     tool = NimbleAgentRunStartTool(api_key="test_key")
     mock_response = MagicMock()
     mock_response.model_dump.return_value = {"id": "task_run_abc", "status": "running"}
@@ -160,6 +224,36 @@ async def test_agent_run_start_arun() -> None:
 
     assert result["id"] == "task_run_abc"
     mock_create.assert_awaited_once()
+
+
+def test_agent_create_includes_skill_and_sources() -> None:
+    """Test create maps skill/sources/output_schema to SDK kwargs."""
+    tool = NimbleAgentCreateTool(api_key="test_key")
+    mock_response = MagicMock()
+    mock_response.model_dump.return_value = {"id": "wsa_new"}
+
+    with patch.object(
+        tool._sync_client.agents,
+        "create",
+        return_value=mock_response,
+    ) as mock_create:
+        tool._run(
+            agent_name="enrich_bot",
+            use_case="enrichment",
+            skill="Company firmographics",
+            sources={
+                "allow": [
+                    {"title": "Filings", "domains": ["sec.gov"], "order": 0},
+                ],
+            },
+            output_schema={"type": "object"},
+        )
+
+    call_kwargs = mock_create.call_args.kwargs
+    assert call_kwargs["skill"] == "Company firmographics"
+    assert call_kwargs["use_case"] == "enrichment"
+    assert call_kwargs["output_schema"] == {"type": "object"}
+    assert call_kwargs["sources"]["allow"][0]["domains"] == ["sec.gov"]
 
 
 def test_agent_run_status() -> None:

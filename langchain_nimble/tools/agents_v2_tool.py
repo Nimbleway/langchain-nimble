@@ -270,7 +270,7 @@ class NimbleAgentCreateToolInput(BaseModel):
     """Input schema for NimbleAgentCreateTool.
 
     Optional fields for creating a Web Search Agent from a template or custom
-    configuration.
+    configuration (Mode 2 bootstrap).
     """
 
     template: str | None = Field(
@@ -279,7 +279,7 @@ class NimbleAgentCreateToolInput(BaseModel):
     )
     agent_name: str | None = Field(
         default=None,
-        description="Optional unique agent name.",
+        description="Optional unique agent name (409 if already taken on create).",
     )
     display_name: str | None = Field(
         default=None,
@@ -295,7 +295,33 @@ class NimbleAgentCreateToolInput(BaseModel):
     )
     use_case: AgentUseCase | None = Field(
         default=None,
-        description="Optional use case: research, enrichment, or dataset_building.",
+        description="""Primary use case — locked at create time.
+
+        - research: free-form cited answer (output.type=text)
+        - enrichment: fill input_data against a schema (output.type=json)
+        - dataset_building: structured table from scratch (output.type=json)
+
+        Cannot be changed later via run overrides (mismatch → 422).
+        """,
+    )
+    skill: str | None = Field(
+        default=None,
+        description=(
+            "Operating instructions / domain expertise for the agent "
+            "(also known as domain_expertise)."
+        ),
+    )
+    sources: dict[str, Any] | None = Field(
+        default=None,
+        description="""Source guidance persisted on the agent.
+
+        Fields: allow/block (groups with title, domains, order) and
+        avoid/prioritize (free-text strings).
+        """,
+    )
+    output_schema: dict[str, Any] | None = Field(
+        default=None,
+        description="JSON Schema for structured output (enrichment/dataset_building).",
     )
     goals: list[str] | None = Field(
         default=None,
@@ -335,6 +361,9 @@ class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
         description: str | None,
         effort: AgentEffort | None,
         use_case: AgentUseCase | None,
+        skill: str | None,
+        sources: dict[str, Any] | None,
+        output_schema: dict[str, Any] | None,
         goals: list[str] | None,
     ) -> dict[str, Any]:
         """Build keyword arguments for agents.create().
@@ -345,7 +374,10 @@ class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
             display_name: Optional display name.
             description: Optional description.
             effort: Optional default effort level.
-            use_case: Optional use case.
+            use_case: Optional use case (locked after create).
+            skill: Optional domain expertise / operating instructions.
+            sources: Optional source guidance to persist.
+            output_schema: Optional JSON Schema to persist.
             goals: Optional list of goals.
 
         Returns:
@@ -364,6 +396,12 @@ class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
             kwargs["effort"] = effort
         if use_case is not None:
             kwargs["use_case"] = use_case
+        if skill is not None:
+            kwargs["skill"] = skill
+        if sources is not None:
+            kwargs["sources"] = sources
+        if output_schema is not None:
+            kwargs["output_schema"] = output_schema
         if goals is not None:
             kwargs["goals"] = goals
         return kwargs
@@ -377,6 +415,9 @@ class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
         description: str | None = None,
         effort: AgentEffort | None = None,
         use_case: AgentUseCase | None = None,
+        skill: str | None = None,
+        sources: dict[str, Any] | None = None,
+        output_schema: dict[str, Any] | None = None,
         goals: list[str] | None = None,
     ) -> dict[str, Any]:
         """Create an agent synchronously.
@@ -387,7 +428,10 @@ class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
             display_name: Optional display name.
             description: Optional description.
             effort: Optional default effort level.
-            use_case: Optional use case.
+            use_case: Optional use case (locked after create).
+            skill: Optional domain expertise / operating instructions.
+            sources: Optional source guidance to persist.
+            output_schema: Optional JSON Schema to persist.
             goals: Optional list of goals.
 
         Returns:
@@ -402,6 +446,9 @@ class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
             description=description,
             effort=effort,
             use_case=use_case,
+            skill=skill,
+            sources=sources,
+            output_schema=output_schema,
             goals=goals,
         )
 
@@ -418,6 +465,9 @@ class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
         description: str | None = None,
         effort: AgentEffort | None = None,
         use_case: AgentUseCase | None = None,
+        skill: str | None = None,
+        sources: dict[str, Any] | None = None,
+        output_schema: dict[str, Any] | None = None,
         goals: list[str] | None = None,
     ) -> dict[str, Any]:
         """Create an agent asynchronously.
@@ -428,7 +478,10 @@ class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
             display_name: Optional display name.
             description: Optional description.
             effort: Optional default effort level.
-            use_case: Optional use case.
+            use_case: Optional use case (locked after create).
+            skill: Optional domain expertise / operating instructions.
+            sources: Optional source guidance to persist.
+            output_schema: Optional JSON Schema to persist.
             goals: Optional list of goals.
 
         Returns:
@@ -443,6 +496,9 @@ class NimbleAgentCreateTool(_NimbleClientMixin, BaseTool):
             description=description,
             effort=effort,
             use_case=use_case,
+            skill=skill,
+            sources=sources,
+            output_schema=output_schema,
             goals=goals,
         )
 
@@ -460,31 +516,109 @@ class NimbleAgentRunStartToolInput(BaseModel):
     """Input schema for NimbleAgentRunStartTool.
 
     Starts a resumable Web Search Agent run without waiting for completion.
+    Supports Mode 1 (``agent_name``), Mode 2 (``agent_id``), and Mode 3
+    (neither — anonymous one-shot).
     """
 
-    agent_id: str = Field(
-        description="""The Nimble Web Search Agent id to run.
-
-        Typically a wsa_… id from nimble_web_search_agents_list or
-        nimble_web_search_agent_create.
-        """,
-    )
     input: str = Field(
         description="The research prompt / input for the agent run.",
     )
+    agent_id: str | None = Field(
+        default=None,
+        description="""Mode 2: existing Web Search Agent id (wsa_…).
+
+        From nimble_web_search_agents_list / create, or from a prior start
+        response field web_search_agent_id. Prefer this when the host can
+        persist the id.
+        """,
+    )
+    agent_name: str | None = Field(
+        default=None,
+        description="""Mode 1 (default for stateless hosts): create-or-reuse by name.
+
+        First unseen name creates the agent; later calls reuse it. Response
+        always includes web_search_agent_id. Reusing a name does not brick
+        after a failed first run. Ignored when agent_id is set.
+        """,
+    )
+    use_case: AgentUseCase | None = Field(
+        default=None,
+        description="""Use case — locked on the agent after create.
+
+        research → text; enrichment → json (needs input_data); dataset_building
+        → json. On an existing agent omit or pass the same value; a different
+        value returns 422. On Mode 1 first create / Mode 3 it is stored.
+        """,
+    )
+    skill: str | None = Field(
+        default=None,
+        description="""Domain expertise / operating instructions for this run.
+
+        One-time override on an existing agent; persisted on Mode 1 first
+        create. Alias of domain_expertise.
+        """,
+    )
     effort: AgentEffort | None = Field(
         default=None,
-        description="Optional effort level: low, medium, high, x-high, or max.",
+        description="""Effort tier for this run: low | medium | high | x-high | max.
+
+        Runs often take 3-15 minutes (medium ~90-160s observed; low ~15-17s
+        may skip live research). Prefer medium+ for real research. Do not
+        poll inside one tool call — use status/result across turns.
+        """,
+    )
+    sources: dict[str, Any] | None = Field(
+        default=None,
+        description="""Source guidance override for this run.
+
+        allow/block: groups [{title, domains, order}]; avoid/prioritize:
+        free-text strings. Persisted only on Mode 1 first create; otherwise
+        one-time.
+        """,
+    )
+    output_schema: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "JSON Schema override for structured output. Persisted only on "
+            "Mode 1 first create; otherwise one-time."
+        ),
+    )
+    input_data: list[dict[str, Any]] | dict[str, Any] | None = Field(
+        default=None,
+        description="""Enrichment payload only (never stored on the agent).
+
+        Partial rows or a single object mirroring output_schema. Distinct
+        from output_schema (data vs shape).
+        """,
+    )
+    enable_events: bool | None = Field(
+        default=None,
+        description=(
+            "If true, enable SSE progress on GET .../runs/{run_id}/events. "
+            "This package does not expose an events tool yet."
+        ),
+    )
+    previous_interaction_id: str | None = Field(
+        default=None,
+        description="Optional prior interaction id to continue a conversation.",
     )
 
 
 class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
     """Start a Nimble Web Search Agent run (does not wait for completion).
 
-    Returns immediately with a run id. Use
-    ``nimble_web_search_agent_run_status`` and
-    ``nimble_web_search_agent_run_result`` across turns — do not poll inside
-    one call.
+    LangChain agents are typically **stateless** across turns unless the app
+    persists ids, so prefer **Mode 1** (``agent_name`` create-or-reuse). Use
+    **Mode 2** (``agent_id``) when ``wsa_…`` is persisted. Omit both for
+    **Mode 3** anonymous one-shot (still returns ``web_search_agent_id``).
+
+    Returns immediately with ``id`` (``task_run_…``) and
+    ``web_search_agent_id`` (``wsa_…``). Use status/result across turns —
+    do not poll inside one call. Runs may take 3-15 minutes.
+
+    ``nimble_python`` 1.1.x types Mode 2 as ``agents.runs.create`` and Mode
+    1/3 as ``agents.run``; ``agent_name`` / ``use_case`` / ``skill`` on the
+    run body are sent via ``extra_body`` until the SDK exposes them.
 
     Args:
         api_key: API key for Nimbleway (or set NIMBLE_API_KEY env var).
@@ -495,96 +629,209 @@ class NimbleAgentRunStartTool(_NimbleClientMixin, BaseTool):
     name: str = "nimble_web_search_agent_run_start"
     description: str = (
         "Start a Nimble Web Search Agent run (Agent API V2). Returns "
-        "immediately with a payload where id is the run_id and "
-        "web_search_agent_id is the agent_id — does NOT wait for completion. "
-        "Later call nimble_web_search_agent_run_status and "
-        "nimble_web_search_agent_run_result across turns. Distinct from "
-        "Extract Templates (nimble_extract_template_run)."
+        "immediately — does NOT wait for completion (often 3-15 minutes). "
+        "Modes: (1) agent_name create-or-reuse for stateless hosts; "
+        "(2) agent_id when you persist wsa_…; (3) omit both for anonymous. "
+        "Response: id=run_id (task_run_…), web_search_agent_id=agent_id. "
+        "Then use nimble_web_search_agent_run_status / _run_result across "
+        "turns. Expose skill, use_case, effort, sources, output_schema, "
+        "input_data as needed. Distinct from Extract Templates."
     )
     args_schema: type[BaseModel] = NimbleAgentRunStartToolInput
     handle_tool_error: bool = True
 
-    def _build_start_kwargs(
+    def _build_typed_run_kwargs(
         self,
-        agent_id: str,
         input: str,  # noqa: A002
         *,
         effort: AgentEffort | None,
+        sources: dict[str, Any] | None,
+        output_schema: dict[str, Any] | None,
+        input_data: list[dict[str, Any]] | dict[str, Any] | None,
+        enable_events: bool | None,
+        previous_interaction_id: str | None,
     ) -> dict[str, Any]:
-        """Build keyword arguments for agents.runs.create().
+        """Build kwargs already typed on the SDK run helpers.
 
         Args:
-            agent_id: Web Search Agent id to run.
             input: Research prompt / input.
             effort: Optional effort level.
+            sources: Optional source guidance.
+            output_schema: Optional JSON Schema override.
+            input_data: Optional enrichment payload.
+            enable_events: Optional SSE flag.
+            previous_interaction_id: Optional conversation continuation id.
 
         Returns:
-            Keyword arguments accepted by ``agents.runs.create``.
+            Keyword arguments shared by ``agents.run`` and ``agents.runs.create``.
         """
-        kwargs: dict[str, Any] = {
-            "agent_id": agent_id,
-            "input": input,
-        }
+        kwargs: dict[str, Any] = {"input": input}
         if effort is not None:
             kwargs["effort"] = effort
+        if sources is not None:
+            kwargs["sources"] = sources
+        if output_schema is not None:
+            kwargs["output_schema"] = output_schema
+        if input_data is not None:
+            kwargs["input_data"] = input_data
+        if enable_events is not None:
+            kwargs["enable_events"] = enable_events
+        if previous_interaction_id is not None:
+            kwargs["previous_interaction_id"] = previous_interaction_id
         return kwargs
+
+    def _build_extra_body(
+        self,
+        *,
+        agent_id: str | None,
+        agent_name: str | None,
+        use_case: AgentUseCase | None,
+        skill: str | None,
+    ) -> dict[str, Any] | None:
+        """Build extra_body for fields not yet typed on SDK run methods.
+
+        Args:
+            agent_id: Mode 2 agent id (when set, agent_name is ignored).
+            agent_name: Mode 1 create-or-reuse name.
+            use_case: Optional use case (locked after create).
+            skill: Optional domain expertise override.
+
+        Returns:
+            Extra JSON body fields, or ``None`` when empty.
+        """
+        extra: dict[str, Any] = {}
+        if agent_id is None and agent_name is not None:
+            extra["agent_name"] = agent_name
+        if use_case is not None:
+            extra["use_case"] = use_case
+        if skill is not None:
+            extra["skill"] = skill
+        return extra or None
 
     def _run(
         self,
-        agent_id: str,
         input: str,  # noqa: A002
         *,
+        agent_id: str | None = None,
+        agent_name: str | None = None,
+        use_case: AgentUseCase | None = None,
+        skill: str | None = None,
         effort: AgentEffort | None = None,
+        sources: dict[str, Any] | None = None,
+        output_schema: dict[str, Any] | None = None,
+        input_data: list[dict[str, Any]] | dict[str, Any] | None = None,
+        enable_events: bool | None = None,
+        previous_interaction_id: str | None = None,
     ) -> dict[str, Any]:
-        """Start an agent run synchronously.
+        """Start an agent run synchronously (Mode 1 / 2 / 3).
 
         Args:
-            agent_id: Web Search Agent id to run.
             input: Research prompt / input.
+            agent_id: Mode 2 agent id.
+            agent_name: Mode 1 create-or-reuse name.
+            use_case: Optional use case.
+            skill: Optional domain expertise.
             effort: Optional effort level.
+            sources: Optional source guidance.
+            output_schema: Optional JSON Schema override.
+            input_data: Optional enrichment payload.
+            enable_events: Optional SSE flag.
+            previous_interaction_id: Optional conversation continuation id.
 
         Returns:
             Run create payload (``id`` = run_id, ``web_search_agent_id``).
         """
         require_initialized_client(self.name, self._sync_client, sync=True)
 
-        start_kwargs = self._build_start_kwargs(
-            agent_id=agent_id,
+        typed_kwargs = self._build_typed_run_kwargs(
             input=input,
             effort=effort,
+            sources=sources,
+            output_schema=output_schema,
+            input_data=input_data,
+            enable_events=enable_events,
+            previous_interaction_id=previous_interaction_id,
         )
+        extra_body = self._build_extra_body(
+            agent_id=agent_id,
+            agent_name=agent_name,
+            use_case=use_case,
+            skill=skill,
+        )
+        if extra_body is not None:
+            typed_kwargs["extra_body"] = extra_body
 
         with handle_api_errors(operation="agent run start"):
-            response = self._sync_client.agents.runs.create(**start_kwargs)  # type: ignore[union-attr]
+            if agent_id:
+                response = self._sync_client.agents.runs.create(  # type: ignore[union-attr]
+                    agent_id,
+                    **typed_kwargs,
+                )
+            else:
+                response = self._sync_client.agents.run(**typed_kwargs)  # type: ignore[union-attr]
             return response.model_dump(mode="json")
 
     async def _arun(
         self,
-        agent_id: str,
         input: str,  # noqa: A002
         *,
+        agent_id: str | None = None,
+        agent_name: str | None = None,
+        use_case: AgentUseCase | None = None,
+        skill: str | None = None,
         effort: AgentEffort | None = None,
+        sources: dict[str, Any] | None = None,
+        output_schema: dict[str, Any] | None = None,
+        input_data: list[dict[str, Any]] | dict[str, Any] | None = None,
+        enable_events: bool | None = None,
+        previous_interaction_id: str | None = None,
     ) -> dict[str, Any]:
-        """Start an agent run asynchronously.
+        """Start an agent run asynchronously (Mode 1 / 2 / 3).
 
         Args:
-            agent_id: Web Search Agent id to run.
             input: Research prompt / input.
+            agent_id: Mode 2 agent id.
+            agent_name: Mode 1 create-or-reuse name.
+            use_case: Optional use case.
+            skill: Optional domain expertise.
             effort: Optional effort level.
+            sources: Optional source guidance.
+            output_schema: Optional JSON Schema override.
+            input_data: Optional enrichment payload.
+            enable_events: Optional SSE flag.
+            previous_interaction_id: Optional conversation continuation id.
 
         Returns:
             Run create payload (``id`` = run_id, ``web_search_agent_id``).
         """
         require_initialized_client(self.name, self._async_client, sync=False)
 
-        start_kwargs = self._build_start_kwargs(
-            agent_id=agent_id,
+        typed_kwargs = self._build_typed_run_kwargs(
             input=input,
             effort=effort,
+            sources=sources,
+            output_schema=output_schema,
+            input_data=input_data,
+            enable_events=enable_events,
+            previous_interaction_id=previous_interaction_id,
         )
+        extra_body = self._build_extra_body(
+            agent_id=agent_id,
+            agent_name=agent_name,
+            use_case=use_case,
+            skill=skill,
+        )
+        if extra_body is not None:
+            typed_kwargs["extra_body"] = extra_body
 
         with handle_api_errors(operation="agent run start"):
-            response = await self._async_client.agents.runs.create(**start_kwargs)  # type: ignore[union-attr]
+            if agent_id:
+                response = await self._async_client.agents.runs.create(  # type: ignore[union-attr]
+                    agent_id,
+                    **typed_kwargs,
+                )
+            else:
+                response = await self._async_client.agents.run(**typed_kwargs)  # type: ignore[union-attr]
             return response.model_dump(mode="json")
 
 

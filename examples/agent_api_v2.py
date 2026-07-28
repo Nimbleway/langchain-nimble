@@ -59,26 +59,26 @@ async def main() -> None:
         tools=tools,
         system_prompt=(
             "You can run Nimble Web Search Agents (Agent API V2).\n\n"
+            "Prefer Mode 1 for this stateless session: call "
+            "nimble_web_search_agent_run_start with agent_name + use_case="
+            "research + effort=medium (+ optional skill/sources). "
+            "Or Mode 2 with a persisted agent_id / create tool. "
+            "Mode 3: omit both agent_id and agent_name.\n\n"
             "Workflow:\n"
-            "1. nimble_web_search_agents_list and/or "
-            "nimble_web_search_agent_templates_list to discover\n"
-            "2. nimble_web_search_agent_create if you need a new agent "
-            "from a template\n"
-            "3. nimble_web_search_agent_run_start — returns immediately; "
-            "use id as run_id and web_search_agent_id as agent_id\n"
-            "4. nimble_web_search_agent_run_status — check "
-            "queued/running/completed\n"
-            "5. nimble_web_search_agent_run_result — fetch the finished "
-            "result\n\n"
-            "Never pretend a run is finished before status says so. "
-            "Preserve agent_id and run_id across steps."
+            "1. Start a run (returns immediately; often 3–15 minutes total)\n"
+            "2. Map id -> run_id, web_search_agent_id -> agent_id\n"
+            "3. nimble_web_search_agent_run_status until completed/failed\n"
+            "4. nimble_web_search_agent_run_result for text/json + trust\n\n"
+            "use_case is locked after create — do not switch it on reuse. "
+            "Never pretend a run finished before status says so."
         ),
     )
 
     query = args.question or (
-        "Use a Nimble Web Search Agent to research recent developments in "
-        "retrieval-augmented generation evaluation. List agents first, start "
-        "a run, check status, and return the result when ready."
+        "Using Mode 1 (agent_name create-or-reuse), start a medium-effort "
+        "research run about retrieval-augmented generation evaluation, "
+        "poll status across turns, and return the result with citations "
+        "when ready."
     )
 
     print("=" * 80)

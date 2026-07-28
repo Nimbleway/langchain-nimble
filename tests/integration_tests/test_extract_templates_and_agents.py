@@ -92,7 +92,7 @@ def test_agents_list_live(api_key: str) -> None:
 
 @pytest.mark.expensive
 def test_agent_run_start_and_status_live(api_key: str) -> None:
-    """Live smoke: start a run and fetch status (may be non-terminal)."""
+    """Live smoke: Mode 2 start + status when an agent already exists."""
     list_tool = NimbleAgentsListTool(api_key=api_key)
     agents = list_tool.invoke({"limit": 5})
     if not agents:
@@ -122,4 +122,29 @@ def test_agent_run_start_and_status_live(api_key: str) -> None:
     status = status_tool.invoke({"agent_id": agent_id, "run_id": run_id})
 
     assert isinstance(status, dict)
+    assert status.get("status") in _AGENT_RUN_STATUSES
+
+
+@pytest.mark.expensive
+def test_agent_run_start_mode1_live(api_key: str) -> None:
+    """Live smoke: Mode 1 agent_name create-or-reuse + status."""
+    start_tool = NimbleAgentRunStartTool(api_key=api_key)
+    started = start_tool.invoke(
+        {
+            "agent_name": "langchain_nimble_mode1_smoke",
+            "use_case": "research",
+            "effort": "low",
+            "skill": "One short sentence; prefer official docs",
+            "input": "Say hello in one short sentence.",
+        }
+    )
+
+    assert isinstance(started, dict)
+    run_id = started.get("id")
+    agent_id = started.get("web_search_agent_id")
+    assert run_id, f"Expected run id: {started}"
+    assert agent_id, f"Expected web_search_agent_id: {started}"
+
+    status_tool = NimbleAgentRunStatusTool(api_key=api_key)
+    status = status_tool.invoke({"agent_id": agent_id, "run_id": run_id})
     assert status.get("status") in _AGENT_RUN_STATUSES
