@@ -40,8 +40,11 @@ jobs:
           echo "pyproject=$VERSION tag=$TAG"
           [ "$VERSION" = "$TAG" ] || { echo "::error::tag $TAG does not match pyproject version $VERSION"; exit 1; }
       - name: Build sdist + wheel
+        # `build` is pinned: this job holds id-token: write, so the build
+        # toolchain must not float any more than the actions above do. Bump
+        # deliberately, same as the action SHAs.
         run: |
-          python -m pip install build
+          python -m pip install "build==1.5.0"
           python -m build
       - name: Publish to PyPI
         # Full-SHA pin — this step holds id-token: write, so it must never float.
