@@ -1,0 +1,50 @@
+name: Release
+
+# Publishes to PyPI via Trusted Publishing (OIDC, no API token) when a GitHub
+# Release is published — the same mechanism the other Nimble PyPI packages use
+# (Nimbleway/hermes-nimble-agent, Nimbleway/llama-index-tools-nimble). The PyPI
+# project's "trusted publisher" must be configured once by an admin
+# (https://docs.pypi.org/trusted-publishers/), pointing at this repo, the
+# `release.yml` workflow, and the `release` environment. The release tag must be
+# vX.Y.Z and match the version in pyproject.toml.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read # actions/checkout
+      id-token: write # PyPI Trusted Publishing (OIDC)
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Verify the release tag matches the pyproject version
+        # Read the tag from the release-event payload, not github.ref_name —
+        # release events do not reliably populate ref_name, which makes the
+        # guard silently never match. Bound via env, never interpolated into
+        # the script, to avoid injection.
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION=$(grep -m1 '^version' pyproject.toml | sed -E 's/.*"(.*)".*/\1/')
+          TAG="${RELEASE_TAG#v}"
+          echo "pyproject=$VERSION tag=$TAG"
+          [ "$VERSION" = "$TAG" ] || { echo "::error::tag $TAG does not match pyproject version $VERSION"; exit 1; }
+      - name: Build sdist + wheel
+        run: |
+          python -m pip install build
+          python -m build
+      - name: Publish to PyPI
+        # Full-SHA pin — this step holds id-token: write, so it must never float.
+        # Same version the other Nimble PyPI repos use; update deliberately with
+        # the version comment.
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
