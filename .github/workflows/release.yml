@@ -35,7 +35,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          VERSION=$(grep -m1 '^version' pyproject.toml | sed -E 's/.*"(.*)".*/\1/')
+          VERSION=$(python -c 'import tomllib, pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')
           TAG="${RELEASE_TAG#v}"
           echo "pyproject=$VERSION tag=$TAG"
           [ "$VERSION" = "$TAG" ] || { echo "::error::tag $TAG does not match pyproject version $VERSION"; exit 1; }
