@@ -202,3 +202,60 @@ from langchain_nimble._utilities import _NimbleClientMixin, handle_api_errors
 - Include context in error messages
 - Retry on 5xx errors only, never on 4xx (see Architecture Patterns section)
 
+---
+
+## Releasing
+
+Releases to PyPI are automated. **Never build and upload by hand** - publishing a
+GitHub Release is the only supported path, and it is what produces the artifacts
+users install.
+
+### Steps
+
+1. Bump `version` in `pyproject.toml`, following semver.
+2. Open a PR with that bump and merge it to `main`.
+3. Tag the merge commit `vX.Y.Z` and publish a GitHub Release from that tag.
+
+The `Release` workflow (`.github/workflows/release.yml`) then verifies the tag
+against `pyproject.toml`, builds the sdist and wheel, and uploads to PyPI.
+
+### Rules
+
+- **The tag must match the version exactly**, with a `v` prefix: `pyproject.toml`
+  `version = "3.1.0"` requires tag `v3.1.0`. A mismatch fails the run before the
+  build step, so it never reaches PyPI.
+- **No PyPI credentials are involved.** The workflow authenticates via OIDC
+  Trusted Publishing, which mints a short-lived, project-scoped token at publish
+  time. There is no token to configure, rotate, or leak. Do not add one.
+- **Tags matching `v*` are protected** and require elevated repository
+  permissions. A rejected tag push means you need a maintainer to cut the
+  release, not a workaround.
+- **The workflow body executes from the tag's tree**, not from `main`. A release
+  tag therefore pins both the code and the release process itself, which is why
+  the tag must point at a reviewed, merged commit.
+- **Actions in the publish job are pinned to full commit SHAs.** When bumping
+  one, update the trailing version comment in the same edit.
+
+### Before tagging
+
+```bash
+make lint          # ruff + mypy
+make test          # unit tests, sockets disabled
+make check_imports # verify all public imports resolve
+```
+
+Integration tests need `NIMBLE_API_KEY` and are worth running when the release
+touches request construction or response parsing:
+
+```bash
+make integration_tests
+```
+
+### After publishing
+
+Confirm the new version appears on
+[PyPI](https://pypi.org/project/langchain-nimble/) and that the release carries
+provenance attestations. If the run failed, fix forward with a new patch version
+rather than deleting or moving the tag - published versions cannot be replaced on
+PyPI, and release tags are immutable by policy.
+
